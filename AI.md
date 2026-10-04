@@ -100,3 +100,16 @@ see `BudgetExceededError` and its `kind` (`daily`/`monthly`/`per_post`).
 `POST /content/{id}/transform` supports rewrite, shorten, expand, change_tone, improve, generate_headline, regenerate_fragment, generate_cta and remove_cliches. Calls are background jobs; each produces an AIRequest and a new revision. Concurrent stale transforms do not overwrite a newer manual revision. Changing approved text or recipients requires approval again.
 
 Workspace row locking serializes AI budget checks through usage persistence across workers. Every billed attempt, including malformed output and repair, contributes to spend. Estimates are character/token approximations, not a guarantee of the provider's final invoice; a provider failure without usage cannot reveal actual billed tokens. Billing dates currently use UTC. Real provider traffic was not exercised in release verification.
+
+
+### Agent parameter compatibility fix
+
+The Timeweb text adapter now handles explicit HTTP 400 rejections of legacy
+`temperature` and `max_tokens`: it removes a rejected temperature and substitutes
+`max_completion_tokens` when the token parameter is rejected. This follows the
+[documented reasoning-model exception](https://timeweb.cloud/docs/ai-agents/api-usage/openai-compatible-api).
+Legacy models retain their existing payload when it is accepted. Only explicit
+unsupported-parameter rejections permit another request, with at most three total
+HTTP attempts. Authentication/rate-limit/server errors, timeouts and successful
+responses are not replayed by this compatibility logic. Six mocked HTTP tests
+cover the adaptation and single-attempt outcomes.

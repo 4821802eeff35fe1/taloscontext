@@ -69,9 +69,28 @@ class TimewebAgentTextProvider(TextAIProvider):
 
         started = time.monotonic()
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                f"{self._base_url}/chat/completions", json=payload, headers=headers
-            )
+            # Reasoning agents can reject legacy OpenAI parameters. Only adapt
+            # after an explicit HTTP 400 parameter rejection, before generation.
+            # Never replay a successful, timed-out or otherwise ambiguous call.
+            for _ in range(3):
+                response = await client.post(
+                    f"{self._base_url}/chat/completions", json=payload, headers=headers
+                )
+                if response.status_code != 400:
+                    break
+                try:
+                    error = str(response.json().get("error", "")).lower()
+                except (ValueError, AttributeError):
+                    break
+                if "unsupported" not in error and "not supported" not in error:
+                    break
+                if "temperature" in error and "temperature" in payload:
+                    payload.pop("temperature")
+                    continue
+                if "max_tokens" in error and "max_tokens" in payload:
+                    payload["max_completion_tokens"] = payload.pop("max_tokens")
+                    continue
+                break
         latency_ms = int((time.monotonic() - started) * 1000)
 
         if response.status_code >= 400:
