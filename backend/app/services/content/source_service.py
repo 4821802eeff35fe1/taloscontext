@@ -11,6 +11,7 @@ redirect hop, size cap, timeouts.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import uuid
@@ -25,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import IdeaStatus
 from app.models.sources import Source, SourceItem
-from app.services.security.ssrf_guard import SSRFBlockedError, assert_url_is_safe
+from app.services.security.ssrf_guard import SSRFBlockedError, resolve_public_addresses
 
 MAX_BYTES = 3 * 1024 * 1024
 MAX_REDIRECTS = 5
@@ -40,13 +41,21 @@ class SourceFetchError(Exception):
 
 async def safe_get(url: str, *, timeout: float = 15.0) -> httpx.Response:
     current = url
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False, headers={"User-Agent": USER_AGENT}) as client:
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False, trust_env=False, headers={"User-Agent": USER_AGENT}) as client:
         for _ in range(MAX_REDIRECTS + 1):
             try:
-                assert_url_is_safe(current)
+                addresses = await asyncio.to_thread(resolve_public_addresses, current)
             except SSRFBlockedError as exc:
                 raise SourceFetchError(f"Blocked URL: {exc}") from exc
-            async with client.stream("GET", current) as response:
+            # Connect to the checked IP, preserving HTTP Host and TLS identity.
+            # No second DNS lookup can redirect this connection into a private network.
+            original = httpx.URL(current)
+            pinned = original.copy_with(host=addresses[0])
+            async with client.stream(
+                "GET", pinned,
+                headers={"Host": original.netloc.decode("ascii")},
+                extensions={"sni_hostname": original.host},
+            ) as response:
                 if response.is_redirect:
                     location = response.headers.get("location")
                     if not location:

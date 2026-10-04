@@ -263,7 +263,7 @@ class CalendarResponse(BaseModel):
 
 
 async def _get_or_404(db: AsyncSession, workspace_id: uuid.UUID, content_id: uuid.UUID) -> ContentItem:
-    item = await db.get(ContentItem, content_id)
+    item = await db.get(ContentItem, content_id, with_for_update=True)
     if not item or item.workspace_id != workspace_id or item.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Content item not found")
     return item
@@ -633,8 +633,9 @@ async def edit_content(
             text_changed = True
     for field in ("category", "cta_key", "channel_set_id", "tone_profile_id", "media_asset_id"):
         value = getattr(payload, field)
-        if value is not None:
+        if field in payload.model_fields_set and value != getattr(item, field):
             setattr(item, field, value)
+            text_changed = True
     if payload.clear_media:
         item.media_asset_id = None
 

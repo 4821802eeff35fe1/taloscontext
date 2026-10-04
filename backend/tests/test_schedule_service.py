@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from itertools import pairwise
 
 from app.models.scheduling import Schedule, ScheduleRule
 from app.services.scheduling.service import ScheduleService
@@ -56,5 +57,5 @@ def test_min_interval_enforced_across_multiple_windows():
     after = datetime(2026, 1, 5, 0, 0, tzinfo=UTC)
     slots = service.next_slot(schedule, rules, after=after, count=3)
 
-    for earlier, later in zip(slots, slots[1:]):
+    for earlier, later in pairwise(slots):
         assert (later - earlier).total_seconds() >= 120 * 60

@@ -22,6 +22,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.lease import lease
 from app.core.redis import get_redis
 from app.core.security import decrypt_session_string, encrypt_session_string, mask_phone
 from app.models.enums import TelegramAccountStatus
@@ -164,9 +165,9 @@ class TelegramAuthFlowService:
         password: str | None = None,
     ) -> dict[str, Any]:
         # One step at a time per flow, across all API processes.
-        if not await self.redis.set(_lock_key(flow_id), "1", nx=True, ex=60):
-            raise AuthFlowError("This login step is already being processed.", 409)
-        try:
+        async with lease(self.redis, _lock_key(flow_id)) as acquired:
+            if not acquired:
+                raise AuthFlowError("This login step is already being processed.", 409)
             flow = await self.get(workspace_id=workspace_id, flow_id=flow_id)
             if flow["state"] == AuthFlowState.EXPIRED:
                 raise AuthFlowError("Login session expired. Start again to get a new code.", 410)
@@ -210,6 +211,7 @@ class TelegramAuthFlowService:
                 await provider.disconnect()
 
             account = await self._finalize(flow, profile, final_session)
+            await self.session.commit()  # persist account before Redis declares completion
             flow["state"] = AuthFlowState.COMPLETED
             flow["error"] = None
             flow["result_account_id"] = str(account.id)
@@ -217,8 +219,6 @@ class TelegramAuthFlowService:
             flow.pop("phone_code_hash_encrypted", None)
             await self._save(flow)
             return flow
-        finally:
-            await self.redis.delete(_lock_key(flow_id))
 
     async def _finalize(self, flow: dict[str, Any], profile: TelegramProfile, session_string: str) -> TelegramAccount:
         workspace_id = uuid.UUID(flow["workspace_id"])

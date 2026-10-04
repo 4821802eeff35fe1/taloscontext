@@ -144,6 +144,14 @@ async def run_transform(session: AsyncSession, job: Job, payload: dict[str, Any]
     except AIProviderError as exc:
         raise JobFailed("AI_PROVIDER_ERROR", str(exc)) from exc
 
+    # Re-read after awaiting the provider; manual edits may have committed.
+    await session.refresh(item, with_for_update=True)
+    current = await latest_revision(session, item.id)
+    if (base and current and str(current.id) != base) or item.status not in EDITABLE_STATUSES:
+        raise JobFailed("CONFLICT", "The post changed while the AI was working. Your edits were kept.")
+    if item.status == ContentStatus.APPROVED:
+        item.status = ContentStatus.PENDING_APPROVAL
+
     if operation == "generate_cta":
         if result.cta_key and result.cta_key not in KNOWN_CTA_KEYS:
             raise JobFailed("AI_INVALID_RESPONSE", f"Model returned unknown CTA key {result.cta_key!r}")

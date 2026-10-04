@@ -1,3 +1,5 @@
+from itertools import pairwise
+
 """Feature tests for v0.2 blocks P1–P14 through the HTTP API (fake providers)."""
 import json
 import uuid
@@ -199,7 +201,7 @@ async def test_schedule_api_queue_calendar_and_drag(client):
     new_time = (start + timedelta(days=3)).replace(microsecond=0)
     moved = await client.patch(f"{base}/content/{item['id']}/schedule", json={"scheduled_at": new_time.isoformat()})
     assert moved.status_code == 200
-    assert datetime.fromisoformat(moved.json()["scheduled_at"].replace("Z", "+00:00")) == new_time
+    assert datetime.fromisoformat(moved.json()["scheduled_at"]) == new_time
     past = await client.patch(f"{base}/content/{item['id']}/schedule",
                               json={"scheduled_at": (start - timedelta(hours=2)).isoformat()})
     assert past.status_code == 422
@@ -223,7 +225,7 @@ async def test_misfire_reschedule_does_not_fire_everything(client, session_facto
     async with session_factory() as s:
         times = sorted(c.scheduled_at for c in (await s.execute(select(ContentItem))).scalars().all())
         assert all(scheduler._aware(t) > datetime.now(UTC) for t in times)
-        gaps = [(b - a).total_seconds() for a, b in zip(times, times[1:], strict=False)]
+        gaps = [(b - a).total_seconds() for a, b in pairwise(times)]
         assert all(g >= 3600 - 1 for g in gaps)  # staggered, not a burst
     audit = (await client.get(f"{base}/audit", params={"action": "content"})).json()
     assert sum(1 for a in audit["items"] if a["action"] == "content.misfire_reschedule_next_slot") == 4
@@ -607,3 +609,25 @@ def test_dev_failure_endpoint_is_gated_on_fake_provider_and_non_production():
     from app.api.v1 import router as router_module
 
     assert "_settings.use_fake_telegram_provider and not _settings.is_production" in Path(router_module.__file__).read_text()
+
+
+async def test_transform_revokes_existing_approval(client):
+    _, base, _, cs = await _setup(client)
+    item = await _generate(client, base, cs["id"])
+    await client.post(f"{base}/content/{item['id']}/submit")
+    await client.post(f"{base}/content/{item['id']}/approve")
+    r = await client.post(f"{base}/content/{item['id']}/transform", json={"operation": "shorten"})
+    assert r.status_code == 202
+    after = (await client.get(f"{base}/content/{item['id']}")).json()
+    assert after["status"] == "PENDING_APPROVAL"
+
+
+async def test_target_change_revokes_approval_and_can_clear_nullable_fields(client):
+    _, base, _, cs = await _setup(client)
+    item = await _generate(client, base, cs["id"])
+    await client.post(f"{base}/content/{item['id']}/submit")
+    await client.post(f"{base}/content/{item['id']}/approve")
+    r = await client.patch(f"{base}/content/{item['id']}", json={"channel_set_id": None})
+    assert r.status_code == 200, r.text
+    assert r.json()["channel_set_id"] is None
+    assert r.json()["status"] == "PENDING_APPROVAL"

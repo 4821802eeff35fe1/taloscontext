@@ -75,7 +75,7 @@ class TimewebAgentTextProvider(TextAIProvider):
         latency_ms = int((time.monotonic() - started) * 1000)
 
         if response.status_code >= 400:
-            log.error("timeweb_agent_error", status=response.status_code, body=response.text[:500])
+            log.error("timeweb_agent_error", status=response.status_code)
             response.raise_for_status()
 
         data = response.json()
@@ -123,16 +123,9 @@ class TimewebGatewayImageProvider(ImageAIProvider):
         return bool(self._base_url and self._api_key and self._model)
 
     async def status(self) -> ImageProviderStatus:
-        if not self._configured():
-            return ImageProviderStatus.UNAVAILABLE
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(
-                    f"{self._base_url}/models", headers={"Authorization": f"Bearer {self._api_key}"}
-                )
-            return ImageProviderStatus.AVAILABLE if resp.status_code < 400 else ImageProviderStatus.ERROR
-        except Exception:  # noqa: BLE001
-            return ImageProviderStatus.ERROR
+        # /models availability does not prove image generation support.
+        # The documented Agent image feature is chat/widget only.
+        return ImageProviderStatus.UNAVAILABLE
 
     async def generate(
         self,

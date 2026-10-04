@@ -180,6 +180,10 @@ async def update_source(
         source.is_active = payload.enabled
     if payload.config is not None:
         _validate_config(source.kind, payload.config)
+        if payload.config.account_id:
+            account = await db.get(TelegramAccount, payload.config.account_id)
+            if account is None or account.workspace_id != workspace_id:
+                raise HTTPException(404, "Telegram account not found")
         old = json.loads(source.config_json or "{}")
         new = payload.config.model_dump(mode="json")
         new.update({k: old[k] for k in ("last_error", "last_success_at") if k in old})

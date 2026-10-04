@@ -9,13 +9,17 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 
 from app.api.deps import get_workspace_member
+from app.core.auth import session_is_valid
 from app.core.redis import get_redis
-from app.models.identity import WorkspaceMember
+from app.db.session import session_scope
+from app.models.identity import User, UserSession, WorkspaceMember
 from app.services.realtime.events import channel_for
 
 router = APIRouter(prefix="/workspaces/{workspace_id}", tags=["realtime"])
@@ -23,7 +27,7 @@ router = APIRouter(prefix="/workspaces/{workspace_id}", tags=["realtime"])
 HEARTBEAT_SECONDS = 15
 
 
-async def event_stream(request: Request, workspace_id: uuid.UUID, *, max_idle_loops: int | None = None):
+async def event_stream(request: Request, workspace_id: uuid.UUID, *, max_idle_loops: int | None = None, session_id: uuid.UUID | None = None):
     pubsub = get_redis().pubsub()
     await pubsub.subscribe(channel_for(workspace_id))
     try:
@@ -33,6 +37,18 @@ async def event_stream(request: Request, workspace_id: uuid.UUID, *, max_idle_lo
         while True:
             if await request.is_disconnected():
                 break
+            if session_id is not None:
+                # Recheck revocation and membership while a stream stays open.
+                async with session_scope() as db:
+                    auth = await db.get(UserSession, session_id)
+                    if not session_is_valid(auth, datetime.now(UTC)):
+                        break
+                    user = await db.get(User, auth.user_id)
+                    membership = await db.scalar(select(WorkspaceMember.id).where(
+                        WorkspaceMember.workspace_id == workspace_id,
+                        WorkspaceMember.user_id == auth.user_id))
+                    if not user or not user.is_active or membership is None:
+                        break
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=HEARTBEAT_SECONDS)
             if message is None:
                 idle += 1
@@ -57,7 +73,7 @@ async def events(
     workspace_id: uuid.UUID, request: Request, member: WorkspaceMember = Depends(get_workspace_member)
 ):
     return StreamingResponse(
-        event_stream(request, workspace_id),
+        event_stream(request, workspace_id, session_id=request.state.session_id),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )

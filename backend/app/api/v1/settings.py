@@ -184,7 +184,7 @@ async def update_budget(workspace_id: uuid.UUID, payload: BudgetIn,
     from app.api.v1.autopilot import _get_or_create
 
     config = await _get_or_create(db, workspace_id)
-    before = {k: str(getattr(config, k)) for k in payload.model_fields}
+    before = {k: str(getattr(config, k)) for k in type(payload).model_fields}
     for field, value in payload.model_dump().items():
         setattr(config, field, value)
     await AuditService(db).record(workspace_id=workspace_id, actor_user_id=user.id, action="settings.budget_updated",

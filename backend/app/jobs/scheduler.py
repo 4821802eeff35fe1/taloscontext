@@ -19,6 +19,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 from sqlalchemy import func, or_, select
 
+from app.core.lease import lease
 from app.core.logging import configure_logging
 from app.core.redis import get_redis
 from app.db.session import session_scope
@@ -75,7 +76,7 @@ async def handle_misfires(session, now: datetime) -> list[tuple[ContentItem, str
         await session.execute(
             select(ContentItem)
             .where(ContentItem.status == ContentStatus.SCHEDULED, ContentItem.scheduled_at < now - timedelta(minutes=1))
-            .order_by(ContentItem.scheduled_at)
+            .order_by(ContentItem.scheduled_at).with_for_update(skip_locked=True)
         )
     ).scalars().all()
     cache: dict = {}
@@ -146,7 +147,7 @@ async def _occupied_times(session, item: ContentItem) -> list[datetime]:
 async def promote_due(session, now: datetime) -> int:
     due = (
         await session.execute(
-            select(ContentItem).where(ContentItem.status == ContentStatus.SCHEDULED, ContentItem.scheduled_at <= now)
+            select(ContentItem).where(ContentItem.status == ContentStatus.SCHEDULED, ContentItem.scheduled_at <= now).with_for_update(skip_locked=True)
         )
     ).scalars().all()
     for item in due:
@@ -290,9 +291,9 @@ async def periodic_jobs(session, now: datetime) -> list[Job]:
 async def tick(now: datetime | None = None) -> dict[str, int]:
     now = now or datetime.now(UTC)
     redis = get_redis()
-    if not await redis.set(LOCK_KEY, "1", nx=True, ex=POLL_INTERVAL_SECONDS * 2):
-        return {"skipped": 1}
-    try:
+    async with lease(redis, LOCK_KEY) as acquired:
+        if not acquired:
+            return {"skipped": 1}
         await beat(SCHEDULER_HEARTBEAT_KEY)
         async with session_scope() as session:
             misfired = await handle_misfires(session, now)
@@ -307,8 +308,6 @@ async def tick(now: datetime | None = None) -> dict[str, int]:
         for job in jobs:
             await dispatch(job)
         return {"misfired": len(misfired), "promoted": promoted, "dispatched": len(jobs)}
-    finally:
-        await redis.delete(LOCK_KEY)
 
 
 async def main() -> None:

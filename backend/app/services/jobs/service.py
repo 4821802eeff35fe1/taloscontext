@@ -192,6 +192,13 @@ class JobService:
                     f"Publication is {pub.status.value}; retry is only allowed for failed publications"
                 )
             pub.status = PublicationStatus.PENDING
+            from app.models.content import ContentItem
+            from app.models.distribution import DistributionBatch
+            from app.models.enums import BatchStatus, ContentStatus
+            batch = await self.session.get(DistributionBatch, pub.batch_id)
+            batch.status = BatchStatus.PUBLISHING
+            item = await self.session.get(ContentItem, batch.content_item_id)
+            item.status = ContentStatus.PUBLISHING
         job.status = JobStatus.QUEUED
         job.attempt = 0
         job.error_code = None
@@ -216,7 +223,7 @@ async def dispatch(job: Job) -> None:
     from app.jobs.queue import get_arq_pool
 
     pool = await get_arq_pool()
-    await pool.enqueue_job("run_job", str(job.id), _job_id=f"job:{job.id}:{job.attempt}")
+    await pool.enqueue_job("run_job", str(job.id), _job_id=f"job:{job.id}:{job.attempt}:{job.queued_at.isoformat()}")
 
 
 async def run_job(job_id: uuid.UUID) -> None:
