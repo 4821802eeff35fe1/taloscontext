@@ -1,99 +1,33 @@
-# API
+# API — v0.2.0
 
-Versioned REST under `/api/v1`, served by FastAPI; full interactive reference
-at `/docs` (Swagger UI) once the backend is running. 37 paths registered —
-verified with `app.openapi()` during development (AUDIT.md).
+REST prefix `/api/v1`. Swagger at `/docs` and OpenAPI at `/openapi.json` are the exact contract: **114 HTTP operations** in the verified development configuration (including two health routes and the fake-only control). Production omits the development control.
 
-Cookie-based session auth (`channelos_session`, HttpOnly). All
-workspace-scoped endpoints take `workspace_id` in the path and re-check
-membership + role server-side on every call (`core/rbac.py`).
+Cookie auth is `channelos_session`, a signed server-side session id. Mutations require `X-ChannelOS-Client`; browser client always sends it. Workspace routes check membership/role and foreign references. 429 responses expose Retry-After; 402 identifies budget rejection; 409 identifies invalid transitions/conflicts.
 
-## Auth
+Main route families:
 
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/auth/register` | creates `User` + `Workspace` + `OWNER` membership |
-| POST | `/auth/login` | sets session cookie |
-| POST | `/auth/logout` | clears session cookie |
-| GET | `/auth/me` | current user |
-
-## Workspaces
-
-| Method | Path |
+| Family | Operations |
 |---|---|
-| GET | `/workspaces` |
+| `/auth` | register, login, logout, me, sessions, revoke-others |
+| `/workspaces` | list; workspace members and role changes |
+| `/workspaces/{ws}/telegram` | accounts, auth/start, auth/{flow}, code, password, refresh-channels, disconnect, delete |
+| `/workspaces/{ws}/channels` | list and settings |
+| `/workspaces/{ws}/channel-sets` | create/list/details/update/delete |
+| `/workspaces/{ws}/content` | manual create, background generate, list/details/edit, transform, revisions/restore, costs/context, approval/rejection, schedule/reschedule/unschedule, publish-now, archive/delete, calendar |
+| `/workspaces/{ws}/distributions` | delivery batches, retry-failed, resolve uncertain publication |
+| `/workspaces/{ws}/jobs` | filtered cursor pages, details/attempts, retry/cancel |
+| `/workspaces/{ws}/schedules` | CRUD, pause, preview |
+| `/workspaces/{ws}/knowledge` | bases, documents, uploads, parsed preview, search |
+| `/workspaces/{ws}/tone-profiles` | CRUD/default |
+| `/workspaces/{ws}/series` | CRUD, part/progress details |
+| `/workspaces/{ws}/sources` and `/ideas` | source CRUD/fetch; inbox/filter/status |
+| `/workspaces/{ws}/media` | paged gallery, upload, generate/status, details/archive, authenticated bytes |
+| `/workspaces/{ws}/analytics` | costs, dashboard, content, channel performance |
+| `/workspaces/{ws}/settings` | general, budget, notifications, masked provider/storage/security status |
+| `/workspaces/{ws}/audit`, `/notifications`, `/search` | filters, read actions, global search |
+| `/workspaces/{ws}/events` | SSE, cookies required, Redis pub/sub |
+| `/health`, `/health/ready` | API liveness and dependency/process status |
 
-## Telegram accounts
+Generate returns `{content, job}` with 202. Transforms/imports/fetches return persisted jobs. Job records are committed before dispatch. List response shapes are explicitly typed in `frontend/src/lib/api.ts`; several lists use `{items,next_cursor}`, and jobs additionally return status counts.
 
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/workspaces/{ws}/telegram/accounts` | |
-| POST | `/workspaces/{ws}/telegram/accounts/login` | `{phone}` → sends code |
-| POST | `/workspaces/{ws}/telegram/accounts/{id}/verify` | `{code}` → may require 2FA |
-| POST | `/workspaces/{ws}/telegram/accounts/{id}/2fa` | `{password}` |
-| POST | `/workspaces/{ws}/telegram/accounts/{id}/channels` | imports administered channels |
-| POST | `/workspaces/{ws}/telegram/accounts/{id}/disconnect` | |
-| DELETE | `/workspaces/{ws}/telegram/accounts/{id}` | |
-
-## Channels & Channel Sets
-
-| Method | Path |
-|---|---|
-| GET / PATCH | `/workspaces/{ws}/channels[/{id}]` |
-| GET / POST | `/workspaces/{ws}/channel-sets` |
-
-## Content
-
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/workspaces/{ws}/content?status_filter=` | |
-| GET | `/workspaces/{ws}/content/{id}` | |
-| POST | `/workspaces/{ws}/content/generate` | the one AI call |
-| PATCH | `/workspaces/{ws}/content/{id}` | manual edit |
-| POST | `/workspaces/{ws}/content/{id}/submit` | → `PENDING_APPROVAL` |
-| POST | `/workspaces/{ws}/content/{id}/approve` | → `APPROVED` |
-| POST | `/workspaces/{ws}/content/{id}/reject` | → `REJECTED` |
-| POST | `/workspaces/{ws}/content/{id}/schedule` | `{scheduled_at}`, also creates the `DistributionBatch` |
-
-## Distributions
-
-| Method | Path |
-|---|---|
-| GET | `/workspaces/{ws}/distributions?content_id=` |
-| GET | `/workspaces/{ws}/distributions/{batch_id}` |
-| POST | `/workspaces/{ws}/distributions/{batch_id}/retry-failed` |
-
-## Media
-
-| Method | Path |
-|---|---|
-| GET | `/workspaces/{ws}/media` |
-| POST | `/workspaces/{ws}/media/upload` (multipart, 15 MB cap, magic-byte sniffing) |
-| GET | `/workspaces/{ws}/media/{id}/content` (membership-checked byte stream from S3) |
-
-## Settings / Analytics / Jobs / Autopilot / Sources
-
-| Method | Path |
-|---|---|
-| GET | `/workspaces/{ws}/settings/ai-status` |
-| GET | `/workspaces/{ws}/analytics/costs` |
-| GET | `/workspaces/{ws}/analytics/content/{id}` |
-| GET | `/workspaces/{ws}/jobs` |
-| GET / PATCH | `/workspaces/{ws}/autopilot` |
-| GET / POST | `/workspaces/{ws}/sources` |
-| GET | `/workspaces/{ws}/ideas` |
-
-## Realtime
-
-`GET /ws/{workspace_id}` — WebSocket channel per workspace. The connection
-manager (`main.py::ConnectionManager`) is wired up and ready for job/publish
-status broadcasts; the publish/job services do not yet push events onto it
-(tracked in ROADMAP.md) — today the Jobs page polls instead.
-
-## Error shapes
-
-- `403` — `PermissionDeniedError` (RBAC)
-- `409` — `InvalidTransitionError` (content state machine)
-- `402` — `BudgetExceededError`, body includes `{"kind": "daily"|"monthly"|"per_post"}`
-- `415` — unsupported media upload
-- `502` — AI generation failed after the one automatic retry
+Telegram login routes changed from v0.1 account-id/in-memory login to flow-id/Redis login. Frontend and backend must be deployed together. The browser client and OpenAPI are authoritative over historical snippets.

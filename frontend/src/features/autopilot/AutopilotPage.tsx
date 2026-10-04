@@ -1,132 +1,172 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endpoints } from "@/lib/api";
-import { Card } from "@/components/ui/Card";
-import { Select } from "@/components/ui/Select";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { endpoints, type Autopilot } from "@/lib/api";
+import {
+  Button,
+  Card,
+  ErrorState,
+  Field,
+  Input,
+  PageHeader,
+  SkeletonRows,
+} from "@/components/ui/primitives";
+import { Select, Switch } from "@/components/ui/forms";
+import { Tooltip } from "@/components/ui/overlays";
+import { useOperation } from "@/hooks/useOperations";
 
-const MODE_OPTIONS = [
-  { value: "MANUAL", label: "Manual — nothing is created automatically" },
-  {
-    value: "APPROVAL",
-    label: "Approval — AI drafts land in the approval queue",
-  },
-  {
-    value: "AUTOPILOT",
-    label: "Autopilot — AI drafts, approves, and schedules",
-  },
-];
-
-export function AutopilotPage({ workspaceId }: { workspaceId: string }) {
-  const client = useQueryClient();
-  const { data: config } = useQuery({
-    queryKey: ["autopilot", workspaceId],
-    queryFn: () => endpoints.autopilot(workspaceId),
+export function AutopilotPage({ workspaceId: ws }: { workspaceId: string }) {
+  const query = useQuery({
+    queryKey: ["autopilot", ws],
+    queryFn: () => endpoints.autopilot(ws),
   });
-  const channelSets = useQuery({
-    queryKey: ["channel-sets", workspaceId],
-    queryFn: () => endpoints.channelSets(workspaceId),
-  });
-
-  const [mode, setMode] = useState("MANUAL");
-  const [channelSetId, setChannelSetId] = useState<string | undefined>(
-    undefined,
-  );
-  const [postsPerDay, setPostsPerDay] = useState(1);
-  const [dailyBudget, setDailyBudget] = useState("50");
-  const [monthlyBudget, setMonthlyBudget] = useState("1500");
-  const [maxPostCost, setMaxPostCost] = useState("15");
-
-  useEffect(() => {
-    if (config) {
-      setMode(config.mode);
-      setChannelSetId(config.channel_set_id ?? undefined);
-      setPostsPerDay(config.posts_per_day);
-      setDailyBudget(config.daily_budget_rub);
-      setMonthlyBudget(config.monthly_budget_rub);
-      setMaxPostCost(config.max_cost_per_post_rub);
-    }
-  }, [config]);
-
-  const save = useMutation({
-    mutationFn: () =>
-      endpoints.updateAutopilot(workspaceId, {
-        mode,
-        channel_set_id: channelSetId ?? null,
-        posts_per_day: postsPerDay,
-        daily_budget_rub: dailyBudget,
-        monthly_budget_rub: monthlyBudget,
-        max_cost_per_post_rub: maxPostCost,
-      }),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: ["autopilot", workspaceId] }),
-  });
-
   return (
-    <div className="max-w-xl space-y-6">
-      <h1 className="text-xl font-semibold text-ink">Autopilot</h1>
-
-      <Card className="space-y-4">
-        <div>
-          <label className="label">Mode</label>
-          <Select value={mode} onValueChange={setMode} options={MODE_OPTIONS} />
-        </div>
-        <div>
-          <label className="label">Target channel set</label>
+    <div className="max-w-2xl space-y-4">
+      <PageHeader
+        title="Autopilot"
+        description="Plan from your editorial context and Ideas inbox under the workspace budget."
+      />
+      {query.isPending ? (
+        <SkeletonRows />
+      ) : query.isError ? (
+        <ErrorState error={query.error} />
+      ) : (
+        <AutopilotEditor key={ws} ws={ws} initial={query.data} />
+      )}
+    </div>
+  );
+}
+function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
+  const [draft, setDraft] = useState(initial);
+  const sets = useQuery({
+    queryKey: ["channel-sets", ws],
+    queryFn: () => endpoints.channelSets(ws),
+  });
+  const schedules = useQuery({
+    queryKey: ["schedules", ws],
+    queryFn: () => endpoints.schedules(ws),
+  });
+  const image = useQuery({
+    queryKey: ["image-provider", ws],
+    queryFn: () => endpoints.imageProvider(ws),
+  });
+  const save = useOperation(
+    ws,
+    () => endpoints.updateAutopilot(ws, draft),
+    "Autopilot settings saved",
+  );
+  const change = <K extends keyof Autopilot>(key: K, value: Autopilot[K]) =>
+    setDraft({ ...draft, [key]: value });
+  return (
+    <Card className="p-5">
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save.mutate();
+        }}
+      >
+        <Field label="Mode">
           <Select
-            value={channelSetId}
-            onValueChange={setChannelSetId}
-            placeholder="Choose a channel set"
-            options={(channelSets.data ?? []).map((s) => ({
-              value: s.id,
-              label: s.name,
-            }))}
+            ariaLabel="Autopilot mode"
+            value={draft.mode}
+            onValueChange={(v) => change("mode", v)}
+            options={[
+              { value: "MANUAL", label: "Manual — no automatic generation" },
+              {
+                value: "APPROVAL",
+                label: "Approval — drafts need your approval",
+              },
+              {
+                value: "AUTOPILOT",
+                label: "Autopilot — generate, approve and schedule",
+              },
+            ]}
           />
-        </div>
-        <div>
-          <label className="label">Posts per day</label>
-          <input
+        </Field>
+        <Field label="Target">
+          <Select
+            ariaLabel="Autopilot target"
+            value={draft.channel_set_id ?? "none"}
+            onValueChange={(v) =>
+              change("channel_set_id", v === "none" ? null : v)
+            }
+            options={[
+              { value: "none", label: "Choose channel set" },
+              ...(sets.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          />
+        </Field>
+        <Field label="Schedule">
+          <Select
+            ariaLabel="Autopilot schedule"
+            value={draft.schedule_id ?? "none"}
+            onValueChange={(v) =>
+              change("schedule_id", v === "none" ? null : v)
+            }
+            options={[
+              { value: "none", label: "No schedule" },
+              ...(schedules.data ?? []).map((s) => ({
+                value: s.id,
+                label: `${s.name}${s.enabled ? "" : " (paused)"}`,
+              })),
+            ]}
+          />
+        </Field>
+        <Field label="Posts per day" htmlFor="autopilot-posts">
+          <Input
+            id="autopilot-posts"
             type="number"
             min={1}
-            max={20}
-            className="input"
-            value={postsPerDay}
-            onChange={(e) => setPostsPerDay(parseInt(e.target.value, 10))}
+            max={50}
+            value={draft.posts_per_day}
+            onChange={(e) => change("posts_per_day", Number(e.target.value))}
           />
+        </Field>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(
+            [
+              "daily_budget_rub",
+              "monthly_budget_rub",
+              "max_cost_per_post_rub",
+            ] as const
+          ).map((key) => (
+            <Field key={key} label={key.replaceAll("_", " ")}>
+              <Input
+                aria-label={key}
+                type="number"
+                min={0}
+                step="0.01"
+                value={draft[key]}
+                onChange={(e) => change(key, e.target.value)}
+              />
+            </Field>
+          ))}
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="label">Daily budget (₽)</label>
-            <input
-              className="input"
-              value={dailyBudget}
-              onChange={(e) => setDailyBudget(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label">Monthly budget (₽)</label>
-            <input
-              className="input"
-              value={monthlyBudget}
-              onChange={(e) => setMonthlyBudget(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label">Max per post (₽)</label>
-            <input
-              className="input"
-              value={maxPostCost}
-              onChange={(e) => setMaxPostCost(e.target.value)}
-            />
-          </div>
-        </div>
-        <button
-          className="btn-primary"
-          onClick={() => save.mutate()}
-          disabled={save.isPending}
+        <Tooltip
+          content={
+            !image.data?.available
+              ? image.data?.message || "Image provider is unavailable"
+              : undefined
+          }
         >
-          Save settings
-        </button>
-      </Card>
-    </div>
+          <span className="inline-flex gap-2 items-center">
+            <Switch
+              label="Generate images"
+              checked={draft.generate_image}
+              disabled={!image.data?.available}
+              onCheckedChange={(v) => change("generate_image", v)}
+            />
+            Generate images
+          </span>
+        </Tooltip>
+        <p className="text-xs text-ink-muted">
+          Publishing approved posts continues even when the AI budget is
+          exhausted. Missed schedules use your configured misfire policy.
+        </p>
+        <Button type="submit" variant="primary" loading={save.isPending}>
+          Save autopilot
+        </Button>
+      </form>
+    </Card>
   );
 }

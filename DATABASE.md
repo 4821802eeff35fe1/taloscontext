@@ -1,7 +1,7 @@
 # Database
 
 PostgreSQL via SQLAlchemy 2 (async, `asyncpg`), migrated with Alembic. The
-schema is defined once in `backend/app/models/*.py` and the single migration
+schema is defined once in `backend/app/models/*.py` and the initial migration
 `backend/alembic/versions/*_init.py` was generated with
 `alembic revision --autogenerate` and applied successfully against a real
 database during development (see AUDIT.md for how it was verified without
@@ -23,7 +23,7 @@ Docker/Postgres available in this environment).
 | Analytics | `post_metric_snapshots` |
 | Ops | `jobs`, `job_attempts`, `notifications`, `audit_logs` |
 
-30 tables total. All primary keys are UUIDv4; all timestamps are
+33 tables total. All primary keys are UUIDv4; all timestamps are
 `TIMESTAMPTZ` stored in UTC; all money columns are `NUMERIC(12,4)` (never
 `FLOAT`).
 
@@ -66,3 +66,8 @@ alembic upgrade head
 `app/db/base.py::Base` is the single `DeclarativeBase`; `alembic/env.py`
 imports `app.models` (which re-exports every model) before computing
 `target_metadata`, so no table is silently excluded from autogenerate.
+
+
+## v0.2.0 schema
+
+33 mapped tables. The second Alembic revision adds persistent user sessions, workspace settings and knowledge bases, expands job/attempt tracking, content revisions/context and schedule/series metadata. Upgrade, downgrade, repeated upgrade and `alembic check` were exercised on PostgreSQL 16. Do not run the destructive test fixture against an application database; use a separate disposable test database.

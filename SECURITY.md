@@ -1,87 +1,37 @@
-# Security
+# Security — v0.2.0
 
-## Secrets
+## Authentication and isolation
 
-- `.env` is git-ignored; `.env.example` contains no real values.
-- `Settings.validate_production()` (`core/config.py`) raises at startup if
-  `APP_ENV=production` and `APP_SECRET_KEY` or
-  `TELETHON_SESSION_ENCRYPTION_KEY` is unset — fail fast, not a silent
-  insecure default.
-- `structlog`'s `_redact_processor` (`core/logging.py`) replaces any log field
-  named `password`, `code`, `session`/`session_string`, `token`, `api_key`,
-  `secret`, `authorization`, `two_fa_password`, or `verification_code` with
-  `***REDACTED***`, in addition to those values never being passed to log
-  calls in application code in the first place.
+Passwords use Argon2. An HttpOnly, SameSite=Lax cookie contains a signed server-side session **id**; signing does not encrypt the cookie. PostgreSQL session rows support expiry, idle timeout, logout and revocation of other sessions. Login rotates the session id. Production cookies are Secure.
 
-## Telegram credentials
+Workspace endpoints check membership and role server-side. The HTTP isolation suite enumerates workspace routes from OpenAPI and exercises both another workspace's path and foreign entity ids in an owned workspace. This complements role, reference and revocation tests; UI controls are not authorization boundaries.
 
-- StringSession is Fernet-encrypted before being written to Postgres
-  (`core/security.py`); the raw session is only ever held in process memory
-  during an active Telethon call. See `TELEGRAM.md` for the full flow and
-  round-trip test.
-- Phone numbers are stored encrypted and returned to the frontend only in
-  masked form (`mask_phone`).
-- Verification codes and 2FA passwords are never persisted anywhere, even
-  transiently.
+State-changing API calls require `X-ChannelOS-Client`. CORS permits configured origins only. Redis limits registration, login by IP/email, Telegram code and password attempts, returning 429 and Retry-After. Unknown-email login does the same password-hash work and uses the same invalid-credentials response.
 
-## Passwords and sessions
+`TRUSTED_PROXY_COUNT` defaults to 0. Set it to the exact trusted proxy count for your deployment; restrict direct API access when enabling it.
 
-- User passwords are hashed with Argon2 (`argon2-cffi`), never stored or
-  logged in plaintext.
-- The web session is a signed, timed cookie (`itsdangerous`,
-  `core/auth.py`) — `HttpOnly`, `SameSite=Lax`, `Secure` when
-  `APP_ENV=production`. No session content beyond the user id is stored in
-  the cookie, and the cookie cannot be decoded without `APP_SECRET_KEY`.
+## Telegram secrets
 
-## Authorization (RBAC)
+Temporary Telegram auth flows have a ten-minute lifetime in Redis, with encrypted phone, phone-code hash and serialized session. Verification codes and 2FA passwords are used in memory for one request and never persisted. Completed StringSession values are Fernet-encrypted in PostgreSQL. Redis and database backups contain sensitive encrypted material and require access control.
 
-- Every mutating endpoint calls `require_role(member.role, MIN_ROLE)`
-  server-side (`core/rbac.py`) before taking action — approving content needs
-  at least `APPROVER`, managing Telegram accounts/settings needs `ADMIN`,
-  managing members needs `OWNER`. The frontend's role-based UI hints are
-  cosmetic only; every check that matters is re-done in the API layer
-  (`tests/test_rbac.py`).
-- Workspace membership is re-verified per request via `get_workspace_member`
-  — a user can only act within workspaces they belong to.
+Production startup requires a signing key and Telegram session encryption key. Keep keys stable across restarts and store them outside Git. Settings returns masked credentials/configuration flags. Audit metadata recursively redacts sensitive keys; application logging redacts named sensitive fields. Exception messages and third-party provider responses must not be treated as safe secret containers.
 
-## Upload handling
+## Sources and uploads
 
-- `MediaService.upload` sniffs the actual file bytes (magic numbers) rather
-  than trusting the client-supplied extension or `Content-Type`, rejects
-  anything outside `{png, jpeg, webp, gif}`, and enforces a 15 MB cap
-  (`services/media/service.py`).
-- `sanitize_filename` strips path separators and non-word characters before
-  any filename is used in a storage key.
+Source URLs must use HTTP(S), contain no embedded credentials, and resolve entirely to public unicast addresses. Private, loopback, link-local, unspecified, multicast, CGNAT and IPv4-mapped private addresses are refused. Each redirect is checked. Fetches connect to the validated IP while retaining HTTP Host and TLS SNI, preventing a second DNS resolution from rebinding the request. Environment proxies are disabled for these requests. Size, redirect and timeout limits apply.
 
-## SSRF protection
+Media uploads are read with a byte limit and validated by content. Object keys are generated from workspace id and checksum, not user paths. Downloads require workspace membership. Knowledge supports bounded TXT/MD/JSON/CSV/PDF parsing; malformed imports are rejected. Telegram export metadata is retained.
 
-- `services/security/ssrf_guard.py::assert_url_is_safe` resolves the
-  hostname and blocks RFC1918 private ranges, loopback, link-local
-  (including the `169.254.169.254` cloud metadata address), and their IPv6
-  equivalents, before `SourceService` or any other outbound fetcher issues a
-  request to a user- or AI-supplied URL.
+Telegram HTML uses an allow-list on the server and in browser preview. Editor-to-Telegram conversion drops unsafe tags/URLs. Backend media responses set nosniff and a restrictive sandbox CSP.
 
-## Telegram HTML sanitization
+## Concurrency and delivery
 
-- `services/content/html_sanitizer.py::sanitize_telegram_html` strips any
-  tag outside Telegram's supported set, drops anchors without a safe
-  `http(s)://`/`tg://` href, and auto-closes unbalanced tags — applied to
-  every AI-generated or manually-edited post **before** it's ever persisted,
-  so a malformed tag can never reach `send_message` and trigger a Telegram
-  parse error at publish time.
+Owned Redis leases renew scheduler/auth locks and cancel work if ownership is lost. PostgreSQL locks serialize content modifications, series assignment, job claim, batch aggregation and workspace AI budget checks. Publication claims are committed before Telegram sends. A crash during a send leaves uncertain delivery for manual resolution, never an automatic resend. This is not a claim of distributed exactly-once delivery.
 
-## Transport and CORS
+SSE rechecks session validity and workspace membership and releases the request DB connection before streaming. Redis pub/sub has no replay log; clients refetch on reconnect.
 
-- CORS origins are explicit (`Settings.cors_origins`), not a wildcard.
-- All request handlers that touch the database operate within a single
-  transaction (one `AsyncSession` per request, committed or rolled back as a
-  unit) — no multi-request transactions, no partial writes left dangling on
-  error.
+## Dependency review
 
-## What is explicitly out of scope for this build
+Vite/Vitest were upgraded after the dependency audit. `npm audit --omit=dev` is the production dependency check. Tailwind 3's build-time `braces` dependency has an [unpatched recursion denial-of-service advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm); only trusted repository content/globs may enter the build. It is absent from the static Nginx runtime. Migration to Tailwind 4 remains follow-up work.
 
-- Rate limiting / WAF at the HTTP edge — expected to be handled by a reverse
-  proxy or platform-level gateway in front of the API, not reimplemented here.
-- A dedicated secrets manager (Vault, etc.) — `.env` is adequate for the
-  stated scope; swapping the config loader for one is a `core/config.py`
-  change.
+The bundled community MinIO is a pinned source build for local/reference deployment. Before public production use, choose supported S3 storage or a maintained MinIO distribution and review its security updates. HTTPS, backups, secret rotation, observability, restricted registration and infrastructure access controls belong to the deployment configuration. No penetration test or large-scale load test is claimed.

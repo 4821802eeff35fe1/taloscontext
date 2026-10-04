@@ -1,86 +1,23 @@
-# Telegram integration
+# Telegram integration — v0.2.0
 
-## Provider abstraction
+ChannelOS uses Telethon user accounts. Real credentials are `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` from my.telegram.org, plus a persistent Fernet session encryption key. Fake mode imports five channels and sends no real messages.
 
-`TelegramProvider` (`app/services/telegram/base.py`) is the only interface
-services depend on. `TelethonTelegramProvider` wraps a single Telethon
-`TelegramClient`; `FakeTelegramProvider` simulates the same contract
-deterministically for dev/tests. `app/services/telegram/factory.py` picks
-between them based on `USE_FAKE_TELEGRAM_PROVIDER`, and always returns a
-**fresh instance** — one Telethon client per account/session, never shared
-or cached across requests or across accounts.
+## Persistent login
 
-## Login flow
+`POST /api/v1/workspaces/{ws}/telegram/auth/start` creates a Redis flow. Submit `/auth/{flow}/code`, and `/auth/{flow}/password` if 2FA is required. `/auth/{flow}` exposes masked state and expiry. States are PHONE_SUBMITTED, CODE_REQUIRED, PASSWORD_REQUIRED, AUTHORIZING, COMPLETED, FAILED and EXPIRED.
 
-```
-POST /telegram/accounts/login        {phone}          -> send_code, status=AUTH_REQUIRED
-POST /telegram/accounts/{id}/verify   {code}           -> sign_in
-                                                          -> TWO_FA_REQUIRED if 2FA is on
-POST /telegram/accounts/{id}/2fa      {password}       -> sign_in(password=...)
-                                                          -> status=CONNECTED, session stored
-```
+Phone, phone-code hash and minimal serialized provider session are encrypted. Flow lifetime is ten minutes; a short tombstone permits an explicit expired response. Code/password are never stored. Each step restores a fresh provider from Redis and uses an owned renewed lock. On completion, the final session is committed to PostgreSQL before the Redis flow reports success. Channel import is a persisted job.
 
-`TelegramAccountService` holds the in-progress Telethon client + phone_code_hash
-in an in-process dict keyed by account id for the duration of the login flow
-(a human-paced, single-operator interaction) rather than persisting
-half-authenticated state. Nothing from this flow is ever written to the
-database except the final encrypted session string:
+Backend restart between phone and code is verified with fake providers in both tests and the Docker restart acceptance script. Real Telethon login, 2FA and temporary StringSession restoration have not been exercised against Telegram in this build. If a process dies during AUTHORIZING, start a new flow after checking account state; the UI has no cross-tab auth-flow recovery list.
 
-- the verification code is **never** persisted (not even transiently in the DB);
-- the 2FA password is **never** persisted;
-- the phone number is stored **encrypted** (`phone_encrypted`) and only a
-  masked form (`phone_masked`, e.g. `+15*******67`) is ever returned by the API;
-- the Telethon `StringSession` is encrypted with Fernet (derived from
-  `TELETHON_SESSION_ENCRYPTION_KEY` via SHA-256) before it touches Postgres —
-  see `core/security.py::encrypt_session_string` / `decrypt_session_string`,
-  round-trip covered by `tests/test_security.py`.
+## Publishing
 
-## Channel import and permissions
+The provider restores the account's encrypted session, uses channel entity id/access hash, and sends text or media. An atomic Publication claim is persisted before the external send. Successful rows carry Telegram message ids. Failed rows have classified errors; FloodWait temporarily pauses the account and schedules retry. Successful publications are never included in retry-failed.
 
-`TelegramAccountService.refresh_channels` lists only broadcast channels the
-account administers (`client.iter_dialogs()` filtered to `Channel` entities
-with `broadcast=True`), and records `can_post` from the account's actual
-admin rights (`creator` or `admin_rights.post_messages`) — the presence of a
-channel in the list never implies posting permission. `health` is set to
-`NO_POST_PERMISSION` when `can_post` is false, so the Channels UI can show an
-honest state instead of letting a publish attempt fail downstream.
+If delivery becomes uncertain, automatic retry is blocked. Content Studio exposes Confirm published / Confirm not delivered after a person checks the channel. Telegram and PostgreSQL cannot participate in one atomic transaction, so this design preserves uncertainty rather than claiming exactly-once delivery after every possible crash.
 
-## Publishing and idempotency
+Metrics are views, forwards, reactions and replies when available from Telegram. They are snapshots, not fabricated growth estimates. Telegram permissions, rate limits, channel visibility and API availability determine what can be collected.
 
-`PublishingService.publish` atomically claims a `Publication` with
-`UPDATE ... WHERE status='PENDING' RETURNING ...` before doing anything else
-— a second call (e.g. a worker restart re-delivering the same job) sees no
-row to claim and returns the already-claimed record untouched. See
-`tests/test_distribution_and_publishing.py::test_claim_is_idempotent_...`.
+## Fake controls
 
-A `DistributionBatch`'s publications are fully independent: 8 successes and
-2 failures leave the batch `PARTIAL_FAILURE`, and `PublishingService.retry_failed`
-re-queues **only** the `FAILED` rows — succeeded publications are never
-touched again (`test_retry_failed_only_touches_failed_publications`).
-
-## FloodWait and error classification
-
-Telethon's `FloodWaitError` is translated into `TelegramOperationError(kind=FLOOD_WAIT,
-wait_seconds=...)` at the provider boundary. `PublishingService._handle_failure`
-then:
-
-- sets the `Publication` back to `PENDING` (not `FAILED` — this is a retry,
-  not a terminal failure);
-- stores `flood_wait_seconds` on the publication for the UI;
-- sets the owning `TelegramAccount.status = FLOOD_WAIT` and
-  `flood_wait_until = now + wait_seconds`, so every other publication queued
-  for that same account is skipped until the wait expires (checked at the top
-  of `publish()`) instead of hammering Telegram again immediately.
-
-Other Telegram RPC errors are classified into `NO_PERMISSION` /
-`ENTITY_NOT_FOUND` (terminal failure, no retry), `AUTH_REQUIRED` (terminal,
-flips the account to `AUTH_REQUIRED` for re-login), and `NETWORK`/`UNKNOWN`
-(retried with a simple attempt cap, not an unbounded loop). Covered by
-`tests/test_telegram_floodwait.py`.
-
-## Metrics collection
-
-`AnalyticsService.collect_metrics_for_publication` reads `views` / `forwards`
-/ reaction counts / reply counts via `client.get_messages(...)` for a single
-already-sent message and stores a `PostMetricSnapshot` — it only ever reads
-Telegram's own reported counters, it never increments anything itself.
+Code `00000` completes login; `22222` requests 2FA; `wrong` simulates an invalid code/password. Fake channel failures can be configured using the development-only, role-protected endpoint `/workspaces/{ws}/dev/fake-telegram/failures`. Failure injection is scoped to the workspace and is not mounted in production.

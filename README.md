@@ -1,91 +1,66 @@
-# ChannelOS
+# ChannelOS v0.2.0
 
-A Telegram Content Operating System: connect Telegram accounts, organize their
-channels into Channel Sets, generate one piece of AI content and fan it out to
-every channel in a set without paying for regeneration, schedule and automate
-publishing, and track AI spend against a budget.
+A daily workspace for running a network of Telegram channels: accounts and Channel Sets, AI drafts and editing, approval, calendars and schedules, Knowledge and Tone of Voice, media, delivery history, costs, jobs, notifications and audit.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the system design, and
-[`AUDIT.md`](AUDIT.md) for what's implemented/tested vs. known limitations.
+The main flow stays **one AI post → one DistributionBatch → independent Publication rows**. Distribution reuses the generated text; retry sends only failed channels. Telegram delivery with an uncertain outcome requires a human decision.
 
-## Stack
-
-- **Backend**: Python 3.12, FastAPI, SQLAlchemy 2 (async), PostgreSQL, Alembic, Redis, ARQ, Telethon
-- **Frontend**: React 19, TypeScript, Vite, TanStack Router/Query, Tailwind CSS, Radix UI
-- **Media**: S3-compatible storage (MinIO in dev)
-
-## Quick start (Docker)
+## Run locally with Docker
 
 ```bash
 cp .env.example .env
-# fill in TELEGRAM_API_ID / TELEGRAM_API_HASH / TELETHON_SESSION_ENCRYPTION_KEY / APP_SECRET_KEY
-# for a first run you can leave USE_FAKE_* flags at "true" and skip Timeweb/Telegram credentials entirely
-
-docker compose up --build
+docker compose up -d --build
 ```
 
-- Frontend: http://localhost:3000
-- Backend API docs: http://localhost:8000/docs
-- MinIO console: http://localhost:9001 (channelos / channelos-secret)
+Open http://localhost:3000 and create a workspace. The example enables fake Telegram, text and image providers; it makes no paid AI calls or real Telegram sends. Set persistent `APP_SECRET_KEY` and `TELETHON_SESSION_ENCRYPTION_KEY` before using real accounts. Generate them with:
 
-The `backend` service runs `alembic upgrade head` automatically on start.
+```bash
+python -c 'import secrets; print(secrets.token_urlsafe(48))'
+python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+```
 
-## Running without Docker (what this session verified)
+Frontend is a static production build behind Nginx. API runs two Uvicorn processes; worker and scheduler run separately. PostgreSQL, Redis AOF and MinIO use persistent volumes. First build can take several minutes, including the pinned MinIO source build.
+
+## Daily workflow
+
+1. Accounts → add a Telegram account → phone, code, optional 2FA → imported channels.
+2. Channel Sets → select channels and distribution mode.
+3. Knowledge / Tone of Voice → add current facts, examples and an editorial profile.
+4. Posts → generate or create a draft → edit in Content Studio → compare versions.
+5. Submit → approve → publish now or choose an exact time / next schedule slot.
+6. Calendar → drag a scheduled post or use Change time. Jobs and delivery details show actual execution and errors.
+7. Costs, notifications and audit show spend, outcomes and changes. ⌘K / Ctrl+K opens actions and search.
+
+`ADAPTED` per-channel paid regeneration is not exposed in this release. Image generation through the real Timeweb Agent is unavailable; upload/gallery remain usable. Fake image generation exists for testing.
+
+## Development and checks
+
+Python 3.12+, Node 22.12+ and Docker Compose are used for verification.
 
 ```bash
 cd backend
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-
-export APP_SECRET_KEY=dev-secret
-export TELETHON_SESSION_ENCRYPTION_KEY=dev-encryption-key
-export DATABASE_URL=sqlite+aiosqlite:///./dev.db   # Postgres in real deployments
-alembic upgrade head
-uvicorn app.main:app --reload
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.lock
+.venv/bin/pip install --no-deps -e .
+.venv/bin/pytest -q
+.venv/bin/ruff check app tests
 ```
 
 ```bash
 cd frontend
-npm install
-npm run dev
+npm ci
+npm run typecheck
+npm test
+npm run lint
+npm run build
+E2E_BASE_URL=http://localhost:3000 E2E_API_URL=http://localhost:8000 npm run test:e2e
 ```
 
-With `USE_FAKE_AI_PROVIDER=true`, `USE_FAKE_IMAGE_PROVIDER=true`,
-`USE_FAKE_TELEGRAM_PROVIDER=true` (the defaults), the entire product flow —
-add account, import channels, create a channel set, generate a post, approve,
-schedule — works with zero real cost and zero real Telegram traffic. This
-exact flow was run against a live `uvicorn` instance during development; see
-AUDIT.md for details.
-
-The background worker (`arq app.jobs.worker.WorkerSettings`) and scheduler
-(`python -m app.jobs.scheduler`) require Redis — run them via
-`docker compose up worker scheduler redis` or point `REDIS_URL` at a local
-Redis instance.
-
-## Tests
+Run browser tests against fake providers only. Run restart acceptance **separately** from browser tests:
 
 ```bash
-cd backend && source .venv/bin/activate
-pytest -q          # 45 tests, no network/DB server required (SQLite in-memory)
-ruff check app tests
-
-cd frontend
-npm run build       # tsc -b && vite build — exercises the full typecheck + bundle
+backend/.venv/bin/python scripts/verify_compose.py
 ```
 
-## Repository layout
+This script creates its own test workspace and restarts backend/worker/scheduler. Test databases must be disposable: the backend suite recreates its test schema. See [TESTING.md](TESTING.md).
 
-```
-backend/app/
-  api/v1/        REST endpoints
-  core/          config, security, logging, RBAC, auth
-  models/        SQLAlchemy models (one file per domain group)
-  services/      business logic — ai/, telegram/, publishing/, scheduling/,
-                 content/, costs/, analytics/, media/, security/, knowledge/
-  jobs/          ARQ worker tasks + standalone scheduler process
-  alembic/       migrations
-frontend/src/
-  features/      one folder per product area (auth, dashboard, telegram, ...)
-  components/ui/ shared design-system primitives (Radix-based)
-  lib/api.ts     typed API client
-```
+See [AUDIT.md](AUDIT.md) for evidence and remaining limits, [DEPLOYMENT.md](DEPLOYMENT.md) for production setup, and [ARCHITECTURE.md](ARCHITECTURE.md), [TELEGRAM.md](TELEGRAM.md), [AI.md](AI.md), [SECURITY.md](SECURITY.md), [API.md](API.md), [DATABASE.md](DATABASE.md).

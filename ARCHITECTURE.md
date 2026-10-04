@@ -119,7 +119,7 @@ logged, and structlog processors redact any field named `session`, `password`, `
 `ContentItem`: `IDEA → DRAFT → GENERATING → PENDING_APPROVAL → APPROVED → SCHEDULED → PUBLISHING
 → PUBLISHED | PARTIALLY_PUBLISHED | FAILED`, with `REJECTED`/`ARCHIVED` reachable from the
 pre-publish states. Transitions are enforced by `ContentService._assert_transition`, a single
-source of truth — the API never writes `status` directly.
+source of truth for allowed transitions; orchestration also checks it before changing status.
 
 `Publication`: `PENDING → CLAIMED → SENDING → SUCCESS | FAILED (→ retryable)`. A
 `DistributionBatch` aggregates its publications' statuses into `SUCCESS` /
@@ -152,5 +152,30 @@ generation pauses — publishing of already-approved content is never blocked by
 Versioned REST under `/api/v1`, resources per §45 of the product brief. Mutating endpoints are
 transactional (single DB transaction per request handler); list endpoints use cursor pagination
 (`posts`, `audit-log`, `jobs`, `media`). Realtime state (`job status`, `publishing progress`,
-`floodwait`, `account disconnected`) is pushed over a `/ws` WebSocket channel scoped to the
-workspace, not polled.
+`floodwait`, `account disconnected`) is published through Redis pub/sub and delivered through
+`/api/v1/workspaces/{workspace_id}/events` SSE. Reconnect refetches workspace queries;
+there is no durable event replay log.
+
+
+## 11. v0.2 operational architecture
+
+Telegram auth flows persist encrypted temporary StringSession, phone and phone-code hash
+in Redis with a ten-minute TTL. Verification codes and 2FA passwords are used only during
+the request. Owned, renewing Redis leases serialize flow mutations and scheduler ticks.
+Completed account state commits to PostgreSQL before the flow is marked completed.
+
+Web cookies contain a signed session id referencing revocable `user_sessions` rows.
+Jobs and attempts persist in PostgreSQL; ARQ messages carry job ids. The scheduler
+recovers lost queued messages and stale work. Two API processes run in the verified
+Compose deployment. SSE releases its request database connection and rechecks access.
+
+Publication claims commit before external Telegram sends. Uncertain delivery blocks
+automatic retry and requires manual reconciliation: Telegram sends and database commits
+cannot be atomic. Content and batch locks serialize edits, approval and final aggregation.
+AI budget checks lock the workspace through usage/cost commit; malformed billed outputs
+remain in the ledger.
+
+Nginx serves the production frontend and proxies API/SSE using Docker DNS resolution,
+including after backend container replacement. Redis AOF and database/storage volumes
+preserve state. External URL retrieval pins validated public addresses and revalidates
+redirects while preserving Host and TLS SNI.

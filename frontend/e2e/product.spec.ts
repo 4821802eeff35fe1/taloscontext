@@ -332,6 +332,7 @@ test.describe.serial("daily product flow with fake providers", () => {
     await expect(
       page.getByRole("heading", { name: "Calendar", exact: true }),
     ).toBeVisible();
+    await expect(page.getByTestId("calendar-day").first()).toBeVisible();
     await page.screenshot({
       path: "test-results/ux-calendar-desktop.png",
       fullPage: true,
@@ -342,7 +343,7 @@ test.describe.serial("daily product flow with fake providers", () => {
     ).toBeVisible();
     await page.screenshot({
       path: "test-results/ux-calendar-mobile.png",
-      fullPage: true,
+      fullPage: false,
     });
     expect(
       await page.evaluate(

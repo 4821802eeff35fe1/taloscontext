@@ -22,7 +22,7 @@ API. Two deliberate constraints, both because Timeweb's docs do not guarantee
 otherwise:
 
 - The `model` field in the request body is sent for schema compliance only.
-  The agent's actual model (GPT-6 Sol) is fixed by the agent's own
+  The agent's actual model is determined by its own
   configuration in the Timeweb console — the field is **not** relied on to
   select a model.
 - No unsupported sampling parameters are sent. The request body is
@@ -33,7 +33,9 @@ otherwise:
 
 ## Image: GPT Image 2.5 Sunburst — why it's `UNAVAILABLE` by default
 
-At the time this was built, Timeweb's documentation describes the agent's
+Official documentation checked for v0.2.0: [API usage](https://timeweb.cloud/docs/ai-agents/api-usage), [agent image generation](https://timeweb.cloud/docs/ai-agents/manage-agents/image-generation), [AI Gateway](https://timeweb.cloud/docs/ai-agents/api-usage/ai-gateway).
+
+At the time this was checked, Timeweb's documentation describes the agent's
 image generation (GPT Image 2.5 Sunburst) as reachable through the hosted
 chat widget, **not** as a documented `/images/generations`-style programmatic
 endpoint on the OpenAI-compatible agent API. Per the project's explicit
@@ -42,11 +44,7 @@ instruction to never fabricate an endpoint, `TimewebGatewayImageProvider`:
 - targets the separate **AI Gateway** product via `TIMEWEB_AI_GATEWAY_BASE_URL`
   / `TIMEWEB_AI_GATEWAY_API_KEY` / `TIMEWEB_IMAGE_MODEL`, which is the most
   plausible documented path to a real image API if/when one is confirmed;
-- reports `ImageProviderStatus.UNAVAILABLE` whenever those env vars are
-  empty (the default), `ERROR` if they're set but the endpoint doesn't
-  respond, and only ever `AVAILABLE` once a real, confirmed endpoint is
-  wired into `generate()` (currently `raise NotImplementedError` with a
-  message pointing at what to fill in);
+- always reports `ImageProviderStatus.UNAVAILABLE` for the real Timeweb image adapter, even if gateway credentials are configured; no models probe is treated as proof of an image API;
 - is read everywhere in the app through `ImageAIProvider.status()`, so the UI
   (`Settings → AI status`, Cost Dashboard) shows a honest
   "Image provider is not available through the configured Timeweb API"
@@ -95,3 +93,10 @@ is stored but the score itself is computed locally — see
 the raw provider usage and the resulting `AIRequest`/`CostEvent` rows. Budget
 checks (`assert_budget_available`) run **before** a billable call is issued —
 see `BudgetExceededError` and its `kind` (`daily`/`monthly`/`per_post`).
+
+
+## v0.2.0 editing and budgets
+
+`POST /content/{id}/transform` supports rewrite, shorten, expand, change_tone, improve, generate_headline, regenerate_fragment, generate_cta and remove_cliches. Calls are background jobs; each produces an AIRequest and a new revision. Concurrent stale transforms do not overwrite a newer manual revision. Changing approved text or recipients requires approval again.
+
+Workspace row locking serializes AI budget checks through usage persistence across workers. Every billed attempt, including malformed output and repair, contributes to spend. Estimates are character/token approximations, not a guarantee of the provider's final invoice; a provider failure without usage cannot reveal actual billed tokens. Billing dates currently use UTC. Real provider traffic was not exercised in release verification.

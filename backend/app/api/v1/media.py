@@ -4,6 +4,7 @@ import base64
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel, Field
@@ -234,5 +235,5 @@ async def media_content(
                "Content-Security-Policy": "default-src 'none'; sandbox"}
     if download:
         safe = asset.original_filename or f"{asset.id}"
-        headers["Content-Disposition"] = f'attachment; filename="{safe}"'
+        headers["Content-Disposition"] = "attachment; filename*=UTF-8''" + quote(safe, safe="")
     return Response(content=data, media_type=asset.mime_type, headers=headers)
