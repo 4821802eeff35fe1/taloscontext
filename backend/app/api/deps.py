@@ -2,32 +2,53 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import SESSION_COOKIE_NAME, read_session_token
+from app.core.auth import (
+    LAST_SEEN_RESOLUTION,
+    SESSION_COOKIE_NAME,
+    read_session_id,
+    session_is_valid,
+)
 from app.db.session import get_session
-from app.models.identity import User, WorkspaceMember
+from app.models.identity import User, UserSession, WorkspaceMember
 
 
 async def get_db(session: AsyncSession = Depends(get_session)) -> AsyncGenerator[AsyncSession, None]:
     yield session
 
 
-async def get_current_user(
+async def get_current_session(
+    request: Request,
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
     db: AsyncSession = Depends(get_db),
-) -> User:
+) -> UserSession:
     if not session_token:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
-    user_id = read_session_token(session_token)
-    if not user_id:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session")
-    user = await db.get(User, user_id)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+    session_id = read_session_id(session_token)
+    row = await db.get(UserSession, session_id) if session_id else None
+    now = datetime.now(UTC)
+    if not session_is_valid(row, now):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired. Sign in again.")
+    last_seen = row.last_seen_at if row.last_seen_at.tzinfo else row.last_seen_at.replace(tzinfo=UTC)
+    if now - last_seen > LAST_SEEN_RESOLUTION:
+        row.last_seen_at = now
+        await db.commit()
+    request.state.session_id = row.id
+    return row
+
+
+async def get_current_user(
+    session_row: UserSession = Depends(get_current_session),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    user = await db.get(User, session_row.user_id)
     if not user or not user.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found or inactive")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This account is disabled.")
     return user
 
 
@@ -43,5 +64,6 @@ async def get_workspace_member(
     )
     member = result.scalar_one_or_none()
     if member is None:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a member of this workspace")
+        # 404, not 403: don't confirm that a workspace id exists to non-members.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Workspace not found")
     return member

@@ -58,37 +58,54 @@ class ContentService:
             for item in items
         ]
 
-    async def generate(
+    async def create_generation_request(
         self,
         *,
         workspace_id: uuid.UUID,
         user_id: uuid.UUID | None,
-        user_instruction: str,
-        tone_context: str = "",
-        knowledge_context: str = "",
         channel_set_id: uuid.UUID | None = None,
         tone_profile_id: uuid.UUID | None = None,
+        series_id: uuid.UUID | None = None,
+        source_item_id: uuid.UUID | None = None,
+        topic: str = "",
     ) -> ContentItem:
+        """Creates the ContentItem in GENERATING; the AI call happens in a job."""
         item = ContentItem(
             workspace_id=workspace_id,
             created_by_user_id=user_id,
             status=ContentStatus.IDEA,
             channel_set_id=channel_set_id,
             tone_profile_id=tone_profile_id,
+            series_id=series_id,
+            source_item_id=source_item_id,
+            topic=topic[:300],
         )
         self.session.add(item)
         await self.session.flush()
-
         self.assert_transition(item, ContentStatus.GENERATING)
         item.status = ContentStatus.GENERATING
         await self.session.flush()
+        return item
 
-        candidates = await self._recent_candidates(workspace_id)
+    async def complete_generation(
+        self,
+        item: ContentItem,
+        *,
+        user_id: uuid.UUID | None,
+        user_instruction: str,
+        tone_context: str = "",
+        knowledge_context: str = "",
+        extra_context: str = "",
+    ) -> ContentItem:
+        """Runs the single AI call for a GENERATING item and stores the draft."""
+        candidates = await self._recent_candidates(item.workspace_id)
         recent_topics = "; ".join(c.title for c in candidates[:20]) or "None"
+        if extra_context:
+            user_instruction = f"{user_instruction}\n\n{extra_context}"
 
         try:
             result, _cost = await self.ai_service.generate_post(
-                workspace_id=workspace_id,
+                workspace_id=item.workspace_id,
                 content_item_id=item.id,
                 tone_context=tone_context,
                 knowledge_context=knowledge_context,
@@ -104,6 +121,7 @@ class ContentService:
         item.status = ContentStatus.DRAFT
         await self.session.flush()
 
+        ai_request = self.ai_service.last_request
         self.session.add(
             ContentRevision(
                 content_item_id=item.id,
@@ -112,10 +130,32 @@ class ContentService:
                 title=item.title,
                 plain_text=item.plain_text,
                 telegram_html=item.telegram_html,
+                ai_request_id=ai_request.id if ai_request else None,
             )
         )
         await self.session.flush()
         return item
+
+    async def generate(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        user_id: uuid.UUID | None,
+        user_instruction: str,
+        tone_context: str = "",
+        knowledge_context: str = "",
+        channel_set_id: uuid.UUID | None = None,
+        tone_profile_id: uuid.UUID | None = None,
+    ) -> ContentItem:
+        """Create + generate in one go (Autopilot, tests)."""
+        item = await self.create_generation_request(
+            workspace_id=workspace_id, user_id=user_id,
+            channel_set_id=channel_set_id, tone_profile_id=tone_profile_id,
+        )
+        return await self.complete_generation(
+            item, user_id=user_id, user_instruction=user_instruction,
+            tone_context=tone_context, knowledge_context=knowledge_context,
+        )
 
     def _apply_generation_result(
         self, item: ContentItem, result: GenerationResult, candidates: list[DuplicateCandidate]
@@ -177,6 +217,12 @@ class ContentService:
     async def reject(self, item: ContentItem) -> ContentItem:
         self.assert_transition(item, ContentStatus.REJECTED)
         item.status = ContentStatus.REJECTED
+        await self.session.flush()
+        return item
+
+    async def schedule_only_status(self, item: ContentItem) -> ContentItem:
+        self.assert_transition(item, ContentStatus.SCHEDULED)
+        item.status = ContentStatus.SCHEDULED
         await self.session.flush()
         return item
 

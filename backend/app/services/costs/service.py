@@ -161,6 +161,79 @@ class CostService:
                 kind="per_post",
             )
 
+    async def budget_config(self, workspace_id: uuid.UUID) -> AutopilotConfig:
+        """Budget limits live on the workspace's AutopilotConfig; unsaved -> defaults."""
+        result = await self.session.execute(
+            select(AutopilotConfig).where(AutopilotConfig.workspace_id == workspace_id)
+        )
+        config = result.scalar_one_or_none()
+        if config is None:
+            config = AutopilotConfig(
+                workspace_id=workspace_id, daily_budget_rub=Decimal(50), monthly_budget_rub=Decimal(1500),
+                max_cost_per_post_rub=Decimal(15), budget_warning_pct=80,
+            )
+        return config
+
+    def estimate_text_cost(self, prompt_chars: int, max_output_tokens: int) -> Decimal:
+        """Upper-bound estimate (~4 chars/token, full output budget used)."""
+        pricing = get_pricing_snapshot()
+        _, _, total = compute_cost(
+            prompt_chars // 4 + 1, max_output_tokens,
+            pricing.text_input_rub_per_m, pricing.text_output_rub_per_m,
+        )
+        return total.quantize(Decimal("0.0001"))
+
+    async def assert_ai_allowed(self, workspace_id: uuid.UUID, estimated_cost: Decimal) -> None:
+        """Daily/monthly caps apply to every AI operation, manual or automatic.
+        Publishing already-approved content is never gated by this."""
+        config = await self.budget_config(workspace_id)
+        today = await self.today_spend(workspace_id)
+        if today + estimated_cost > Decimal(config.daily_budget_rub):
+            raise BudgetExceededError(
+                f"AI daily budget reached ({today:.2f} of {Decimal(config.daily_budget_rub):.2f} ₽). "
+                "AI generation resumes tomorrow, or raise the limit in Settings → Budget.",
+                kind="daily",
+            )
+        month = await self.month_spend(workspace_id)
+        if month + estimated_cost > Decimal(config.monthly_budget_rub):
+            raise BudgetExceededError(
+                f"AI monthly budget reached ({month:.2f} of {Decimal(config.monthly_budget_rub):.2f} ₽). "
+                "Raise the limit in Settings → Budget to continue.",
+                kind="monthly",
+            )
+
+    async def check_budget_thresholds(self, workspace_id: uuid.UUID) -> None:
+        """Raises warning/exceeded notifications once per period when a threshold is crossed."""
+        from app.services.notifications.service import NotificationService
+        from app.services.realtime.events import publish_event
+
+        config = await self.budget_config(workspace_id)
+        warn_pct = Decimal(config.budget_warning_pct or 80) / Decimal(100)
+        now = datetime.now(UTC)
+        checks = (
+            ("daily", await self.today_spend(workspace_id), Decimal(config.daily_budget_rub), now.date().isoformat()),
+            ("monthly", await self.month_spend(workspace_id), Decimal(config.monthly_budget_rub), now.strftime("%Y-%m")),
+        )
+        notifier = NotificationService(self.session)
+        for period, spent, limit, period_key in checks:
+            if limit <= 0:
+                continue
+            if spent >= limit:
+                kind, event = "budget.exceeded", "budget.exceeded"
+                msg = f"AI {period} budget reached: {spent:.2f} of {limit:.2f} ₽. Autopilot generation is paused."
+            elif spent >= limit * warn_pct:
+                kind, event = "budget.warning", "budget.warning"
+                msg = f"AI {period} spend at {int(spent / limit * 100)}%: {spent:.2f} of {limit:.2f} ₽."
+            else:
+                continue
+            created = await notifier.notify(
+                workspace_id=workspace_id, kind=kind, message=msg,
+                metadata={"period": period, "spent": str(spent), "limit": str(limit)},
+                dedupe_key=f"{kind}:{period}:{period_key}", dedupe_window=timedelta(days=31),
+            )
+            if created:
+                await publish_event(workspace_id, event, {"period": period, "spent": str(spent), "limit": str(limit)})
+
     async def forecast_month_end(self, workspace_id: uuid.UUID) -> Decimal:
         now = datetime.now(UTC)
         start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)

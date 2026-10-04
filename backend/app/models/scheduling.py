@@ -26,6 +26,9 @@ class Schedule(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     exclude_dates_json: Mapped[str] = mapped_column(Text, default="[]")
     is_paused: Mapped[bool] = mapped_column(Boolean, default=False)
     randomize_within_window: Mapped[bool] = mapped_column(Boolean, default=True)
+    categories_json: Mapped[str] = mapped_column(Text, default="[]")
+    # None -> workspace default (WorkspaceSettings.misfire_policy)
+    misfire_policy: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
     rules: Mapped[list["ScheduleRule"]] = relationship(
         back_populates="schedule", cascade="all, delete-orphan"
@@ -68,6 +71,7 @@ class AutopilotConfig(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     generate_image: Mapped[bool] = mapped_column(Boolean, default=False)
     max_cost_per_post_rub: Mapped[Numeric] = mapped_column(Numeric(12, 4), default=15)
+    budget_warning_pct: Mapped[int] = mapped_column(Integer, default=80)
     daily_budget_rub: Mapped[Numeric] = mapped_column(Numeric(12, 4), default=50)
     monthly_budget_rub: Mapped[Numeric] = mapped_column(Numeric(12, 4), default=1500)
     duplicate_block_threshold: Mapped[float] = mapped_column(default=0.80)

@@ -17,7 +17,7 @@ export function DashboardPage({ workspaceId }: { workspaceId: string }) {
   const postsToday = content.data?.filter((c) => c.published_at?.startsWith(new Date().toISOString().slice(0, 10))).length ?? 0;
   const scheduled = content.data?.filter((c) => c.status === "SCHEDULED").length ?? 0;
   const pendingApproval = content.data?.filter((c) => c.status === "PENDING_APPROVAL").length ?? 0;
-  const failedJobs = jobs.data?.filter((j) => j.status === "FAILED").length ?? 0;
+  const failedJobs = jobs.data?.counts.FAILED ?? 0;
 
   const monthPct = costs.data
     ? Math.min(100, (parseFloat(costs.data.month_rub) / Math.max(1, parseFloat(costs.data.month_budget_rub))) * 100)

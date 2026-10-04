@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 
 
@@ -44,6 +45,13 @@ class TelegramDialog:
 class SendMessageResult:
     telegram_message_id: int
     telegram_channel_id: int
+
+
+@dataclass
+class ChannelPost:
+    message_id: int
+    date: datetime | None
+    text: str
 
 
 @dataclass
@@ -101,6 +109,10 @@ class TelegramProvider(ABC):
         self, *, entity_id: int, message_id: int, access_hash: int | None = None
     ) -> MessageMetrics:
         ...
+
+    @abstractmethod
+    async def read_channel_posts(self, *, username: str, limit: int = 30) -> list[ChannelPost]:
+        """Recent posts of a channel the account can read (Telegram sources)."""
 
     @abstractmethod
     async def disconnect(self) -> None:

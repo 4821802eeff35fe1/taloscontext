@@ -88,8 +88,20 @@ async def workspace(db_session) -> Workspace:
     return ws
 
 
+@pytest.fixture
+def inline_jobs(session_factory, monkeypatch):
+    """Background code uses the test DB; dispatched jobs run immediately in-process."""
+    from app.core.config import get_settings
+    from app.db.session import set_session_factory
+
+    monkeypatch.setattr(get_settings(), "jobs_inline", True)
+    set_session_factory(session_factory)
+    yield
+    set_session_factory(None)
+
+
 @pytest_asyncio.fixture
-async def client(session_factory, redis_client, monkeypatch):
+async def client(session_factory, redis_client, inline_jobs, monkeypatch):
     """HTTP client against the real ASGI app, wired to the test DB/Redis."""
     from app.api.deps import get_db
     from app.jobs import queue as queue_module
@@ -118,7 +130,9 @@ async def client(session_factory, redis_client, monkeypatch):
     monkeypatch.setattr(queue_module, "get_arq_pool", _get_pool)
     app.dependency_overrides[get_db] = _get_db
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test", headers={"X-ChannelOS-Client": "tests"}
+    ) as c:
         c.arq_pool = pool  # type: ignore[attr-defined]
         yield c
     app.dependency_overrides.clear()

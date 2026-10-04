@@ -71,7 +71,12 @@ CONTENT_TRANSITIONS: dict[ContentStatus, set[ContentStatus]] = {
     },
     ContentStatus.PUBLISHED: {ContentStatus.ARCHIVED},
     ContentStatus.PARTIALLY_PUBLISHED: {ContentStatus.PUBLISHING, ContentStatus.ARCHIVED},
-    ContentStatus.FAILED: {ContentStatus.DRAFT, ContentStatus.PUBLISHING, ContentStatus.ARCHIVED},
+    ContentStatus.FAILED: {
+        ContentStatus.DRAFT,
+        ContentStatus.GENERATING,  # retry of a failed generation
+        ContentStatus.PUBLISHING,  # retry of a failed distribution
+        ContentStatus.ARCHIVED,
+    },
     ContentStatus.REJECTED: {ContentStatus.DRAFT, ContentStatus.ARCHIVED},
     ContentStatus.ARCHIVED: set(),
 }
@@ -101,9 +106,11 @@ class AutopilotMode(str, enum.Enum):
 
 class JobType(str, enum.Enum):
     AI_GENERATE_POST = "AI_GENERATE_POST"
-    AI_REWRITE_POST = "AI_REWRITE_POST"
+    AI_REWRITE_POST = "AI_REWRITE_POST"  # legacy v0.1 value, kept so the PG enum stays compatible
+    AI_REWRITE = "AI_REWRITE"
     AI_GENERATE_IMAGE = "AI_GENERATE_IMAGE"
     TELEGRAM_PUBLISH = "TELEGRAM_PUBLISH"
+    TELEGRAM_RETRY = "TELEGRAM_RETRY"
     TELEGRAM_REFRESH_CHANNELS = "TELEGRAM_REFRESH_CHANNELS"
     TELEGRAM_REFRESH_METRICS = "TELEGRAM_REFRESH_METRICS"
     SOURCE_FETCH = "SOURCE_FETCH"
@@ -144,6 +151,9 @@ class AIOperation(str, enum.Enum):
     REGENERATE_FRAGMENT = "REGENERATE_FRAGMENT"
     GENERATE_IMAGE_PROMPT = "GENERATE_IMAGE_PROMPT"
     GENERATE_IMAGE = "GENERATE_IMAGE"
+    IMPROVE = "IMPROVE"
+    GENERATE_CTA = "GENERATE_CTA"
+    REMOVE_CLICHES = "REMOVE_CLICHES"
 
 
 class AIRequestStatus(str, enum.Enum):

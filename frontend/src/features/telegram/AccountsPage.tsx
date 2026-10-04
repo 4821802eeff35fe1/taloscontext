@@ -12,7 +12,7 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
-  const [accountId, setAccountId] = useState<string | null>(null);
+  const [flowId, setFlowId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
@@ -20,14 +20,18 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
     setPhone("");
     setCode("");
     setPassword("");
-    setAccountId(null);
+    setFlowId(null);
     setError(null);
   };
 
   const startLogin = useMutation({
-    mutationFn: () => endpoints.startTelegramLogin(workspaceId, phone),
-    onSuccess: (account) => {
-      setAccountId(account.id);
+    mutationFn: () => endpoints.startTelegramAuth(workspaceId, phone),
+    onSuccess: (flow) => {
+      if (flow.state === "FAILED") {
+        setError(flow.error ?? "Telegram refused to send a code");
+        return;
+      }
+      setFlowId(flow.flow_id);
       setStep("code");
       setError(null);
     },
@@ -35,10 +39,15 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
   });
 
   const submitCode = useMutation({
-    mutationFn: () => endpoints.submitTelegramCode(workspaceId, accountId!, code),
-    onSuccess: (account) => {
-      if (account.status === "TWO_FA_REQUIRED") {
+    mutationFn: () => endpoints.submitTelegramCode(workspaceId, flowId!, code),
+    onSuccess: (flow) => {
+      if (flow.state === "PASSWORD_REQUIRED") {
         setStep("2fa");
+        setError(null);
+        return;
+      }
+      if (flow.state !== "COMPLETED") {
+        setError(flow.error ?? `Login is ${flow.state.toLowerCase()}`);
         return;
       }
       client.invalidateQueries({ queryKey: ["telegram-accounts", workspaceId] });
@@ -49,8 +58,12 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
   });
 
   const submit2FA = useMutation({
-    mutationFn: () => endpoints.submitTelegram2FA(workspaceId, accountId!, password),
-    onSuccess: () => {
+    mutationFn: () => endpoints.submitTelegramPassword(workspaceId, flowId!, password),
+    onSuccess: (flow) => {
+      if (flow.state !== "COMPLETED") {
+        setError(flow.error ?? `Login is ${flow.state.toLowerCase()}`);
+        return;
+      }
       client.invalidateQueries({ queryKey: ["telegram-accounts", workspaceId] });
       onOpenChange(false);
       reset();

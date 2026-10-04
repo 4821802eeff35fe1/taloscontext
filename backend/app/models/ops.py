@@ -19,12 +19,26 @@ class Job(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     status: Mapped[JobStatus] = mapped_column(
         SAEnum(JobStatus, name="job_status"), default=JobStatus.QUEUED
     )
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    # What the job operates on, e.g. ("publication", <id>) — used for dedup,
+    # retry-safety checks and the Jobs UI.
+    entity_type: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    entity_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    payload_summary: Mapped[str] = mapped_column(String(500), default="")
+    progress: Mapped[int] = mapped_column(Integer, default=0)  # 0..100
     attempt: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=5)
-    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    worker: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}")
 
     attempts: Mapped[list["JobAttempt"]] = relationship(
         back_populates="job", cascade="all, delete-orphan"

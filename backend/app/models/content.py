@@ -23,6 +23,14 @@ class ContentSeries(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     tone_profile_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("tone_of_voice_profiles.id", ondelete="SET NULL"), nullable=True
     )
+    category: Mapped[str] = mapped_column(String(100), default="")
+    # DRAFT | ACTIVE | PAUSED | COMPLETED
+    status: Mapped[str] = mapped_column(String(20), default="DRAFT")
+    # Python format string for the issue label, e.g. "#{n:03d}" -> "#004".
+    numbering_format: Mapped[str] = mapped_column(String(40), default="#{n:03d}")
+    schedule_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("schedules.id", ondelete="SET NULL"), nullable=True
+    )
     frequency: Mapped[str] = mapped_column(String(100), default="")
     sequence_counter: Mapped[int] = mapped_column(Integer, default=0)
     planned_topics_json: Mapped[str] = mapped_column(Text, default="[]")
@@ -86,6 +94,16 @@ class ContentItem(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     channel_set_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("channel_sets.id", ondelete="SET NULL"), nullable=True
     )
+    series_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("content_series.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("source_items.id", ondelete="SET NULL"), nullable=True
+    )
+    schedule_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("schedules.id", ondelete="SET NULL"), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

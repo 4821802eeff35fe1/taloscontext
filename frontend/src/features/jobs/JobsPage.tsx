@@ -15,7 +15,7 @@ export function JobsPage({ workspaceId }: { workspaceId: string }) {
       <h1 className="text-xl font-semibold text-ink">Jobs</h1>
 
       <Card className="p-0">
-        {jobs.data && jobs.data.length > 0 ? (
+        {jobs.data && jobs.data.items.length > 0 ? (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-surface-border text-left text-xs text-ink-faint">
@@ -26,7 +26,7 @@ export function JobsPage({ workspaceId }: { workspaceId: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border">
-              {jobs.data.map((job) => (
+              {jobs.data.items.map((job) => (
                 <tr key={job.id}>
                   <td className="px-4 py-2.5 text-ink">{job.job_type}</td>
                   <td className="px-4 py-2.5">

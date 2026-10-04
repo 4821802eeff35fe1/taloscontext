@@ -135,3 +135,31 @@ class DistributionService:
             item.status = target
             if target != ContentStatus.FAILED and item.published_at is None:
                 item.published_at = datetime.now(UTC)
+
+    async def prepare_batch(
+        self, *, content_item: ContentItem, mode: ChannelSetMode, workspace_cta_defaults: dict[str, str]
+    ) -> DistributionBatch:
+        """Batch for (re)scheduling. A batch nothing has been sent from yet is
+        rebuilt (picks up channel-set membership and text changes); a batch
+        that already delivered somewhere is kept as is — never re-fanned out."""
+        if content_item.channel_set_id is None:
+            raise ValueError("Choose a target channel set before scheduling.")
+        existing = (
+            await self.session.execute(
+                select(DistributionBatch).where(DistributionBatch.content_item_id == content_item.id)
+            )
+        ).scalars().all()
+        for batch in existing:
+            statuses = (
+                await self.session.execute(select(Publication.status).where(Publication.batch_id == batch.id))
+            ).scalars().all()
+            if any(s != PublicationStatus.PENDING for s in statuses):
+                return batch
+            await self.session.delete(batch)
+        await self.session.flush()
+        return await self.create_batch(
+            content_item=content_item,
+            channel_set_id=content_item.channel_set_id,
+            mode=mode,
+            workspace_cta_defaults=workspace_cta_defaults,
+        )

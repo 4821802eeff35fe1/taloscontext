@@ -5,7 +5,10 @@ import io
 from telethon import TelegramClient
 from telethon.errors import (
     FloodWaitError,
+    PasswordHashInvalidError,
+    PhoneCodeExpiredError,
     PhoneCodeInvalidError,
+    PhoneNumberInvalidError,
     SessionPasswordNeededError,
 )
 from telethon.sessions import StringSession
@@ -13,6 +16,7 @@ from telethon.tl.types import Channel, InputPeerChannel
 
 from app.core.config import get_settings
 from app.services.telegram.base import (
+    ChannelPost,
     LoginRequires2FA,
     MessageMetrics,
     SendMessageResult,
@@ -48,6 +52,10 @@ class TelethonTelegramProvider(TelegramProvider):
             raise TelegramOperationError(
                 "Flood wait while requesting code", TelegramErrorKind.FLOOD_WAIT, exc.seconds
             ) from exc
+        except PhoneNumberInvalidError as exc:
+            raise TelegramOperationError(
+                "Telegram rejected this phone number.", TelegramErrorKind.AUTH_REQUIRED
+            ) from exc
         self._phone_code_hash = sent.phone_code_hash
         return sent.phone_code_hash
 
@@ -59,7 +67,16 @@ class TelethonTelegramProvider(TelegramProvider):
             raise LoginRequires2FA() from exc
         except PhoneCodeInvalidError as exc:
             raise TelegramOperationError(
-                "Invalid verification code", TelegramErrorKind.AUTH_REQUIRED
+                "The verification code is invalid.", TelegramErrorKind.AUTH_REQUIRED
+            ) from exc
+        except PhoneCodeExpiredError as exc:
+            raise TelegramOperationError(
+                "The verification code has expired. Start again to get a new code.",
+                TelegramErrorKind.AUTH_REQUIRED,
+            ) from exc
+        except FloodWaitError as exc:
+            raise TelegramOperationError(
+                "Too many attempts; Telegram asks to wait.", TelegramErrorKind.FLOOD_WAIT, exc.seconds
             ) from exc
         return TelegramProfile(
             telegram_user_id=user.id,
@@ -71,7 +88,16 @@ class TelethonTelegramProvider(TelegramProvider):
 
     async def sign_in_2fa(self, password: str) -> TelegramProfile:
         client = await self._ensure_client()
-        user = await client.sign_in(password=password)
+        try:
+            user = await client.sign_in(password=password)
+        except PasswordHashInvalidError as exc:
+            raise TelegramOperationError(
+                "The 2FA password is incorrect.", TelegramErrorKind.AUTH_REQUIRED
+            ) from exc
+        except FloodWaitError as exc:
+            raise TelegramOperationError(
+                "Too many attempts; Telegram asks to wait.", TelegramErrorKind.FLOOD_WAIT, exc.seconds
+            ) from exc
         return TelegramProfile(
             telegram_user_id=user.id,
             first_name=user.first_name or "",
@@ -146,6 +172,17 @@ class TelethonTelegramProvider(TelegramProvider):
             reactions=reactions_count,
             replies=(msg.replies.replies if msg.replies else 0),
         )
+
+    async def read_channel_posts(self, *, username: str, limit: int = 30) -> list[ChannelPost]:
+        client = await self._ensure_client()
+        try:
+            entity = await client.get_entity(username)
+            messages = await client.get_messages(entity, limit=limit)
+        except FloodWaitError as exc:
+            raise TelegramOperationError("Flood wait while reading channel", TelegramErrorKind.FLOOD_WAIT, exc.seconds) from exc
+        except (ValueError, TypeError) as exc:
+            raise TelegramOperationError(f"Channel @{username} not found or not readable", TelegramErrorKind.ENTITY_NOT_FOUND) from exc
+        return [ChannelPost(message_id=m.id, date=m.date, text=m.message or "") for m in messages if m.message]
 
     @staticmethod
     async def _resolve(client: TelegramClient, entity_id: int, access_hash: int | None):

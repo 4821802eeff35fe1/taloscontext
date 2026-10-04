@@ -24,7 +24,7 @@ export function GeneratePostDialog({
 
   const generate = useMutation({
     mutationFn: () => endpoints.generateContent(workspaceId, { instruction, channel_set_id: channelSetId ?? null }),
-    onSuccess: (item) => {
+    onSuccess: ({ content: item }) => {
       client.invalidateQueries({ queryKey: ["content", workspaceId] });
       onOpenChange(false);
       setInstruction("");

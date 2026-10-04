@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     use_fake_image_provider: bool = Field(default=True, alias="USE_FAKE_IMAGE_PROVIDER")
     use_fake_telegram_provider: bool = Field(default=True, alias="USE_FAKE_TELEGRAM_PROVIDER")
 
+    # Run jobs in-process right after dispatch instead of via ARQ. For tests
+    # and single-process demos only; production uses the worker.
+    jobs_inline: bool = Field(default=False, alias="JOBS_INLINE")
+    # Number of reverse proxies in front of the API whose X-Forwarded-For we
+    # trust for client-IP based rate limiting. 0 = use the socket peer address.
+    trusted_proxy_count: int = Field(default=0, alias="TRUSTED_PROXY_COUNT")
+    session_max_age_seconds: int = Field(default=60 * 60 * 24 * 14, alias="SESSION_MAX_AGE_SECONDS")
+
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
     @property

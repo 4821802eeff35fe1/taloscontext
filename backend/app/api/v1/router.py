@@ -9,11 +9,13 @@ from app.api.v1 import (
     distributions,
     jobs,
     media,
+    realtime,
     settings,
     sources,
     telegram_accounts,
     workspaces,
 )
+from app.core.config import get_settings
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -28,3 +30,10 @@ api_router.include_router(analytics.router)
 api_router.include_router(jobs.router)
 api_router.include_router(autopilot.router)
 api_router.include_router(sources.router)
+api_router.include_router(realtime.router)
+
+_settings = get_settings()
+if _settings.use_fake_telegram_provider and not _settings.is_production:
+    from app.api.v1 import dev
+
+    api_router.include_router(dev.router)

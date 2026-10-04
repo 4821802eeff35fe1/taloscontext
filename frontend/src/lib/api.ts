@@ -13,6 +13,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...options,
     credentials: "include",
     headers: {
+      "X-ChannelOS-Client": "web",
       ...(options.body && !(options.body instanceof FormData)
         ? { "Content-Type": "application/json" }
         : {}),
@@ -112,6 +113,17 @@ export type AIStatus = {
   telegram_provider_is_fake: boolean;
 };
 
+export type AuthFlow = {
+  flow_id: string;
+  state: string;
+  phone_masked: string;
+  expires_at: string;
+  error: string | null;
+  account_id: string | null;
+  attempts_left: number;
+  refresh_job_id: string | null;
+};
+
 export type JobRow = {
   id: string;
   job_type: string;
@@ -169,14 +181,14 @@ export const endpoints = {
   workspaces: () => api.get<Workspace[]>("/api/v1/workspaces"),
 
   telegramAccounts: (ws: string) => api.get<TelegramAccount[]>(`/api/v1/workspaces/${ws}/telegram/accounts`),
-  startTelegramLogin: (ws: string, phone: string) =>
-    api.post<TelegramAccount>(`/api/v1/workspaces/${ws}/telegram/accounts/login`, { phone }),
-  submitTelegramCode: (ws: string, accountId: string, code: string) =>
-    api.post<TelegramAccount>(`/api/v1/workspaces/${ws}/telegram/accounts/${accountId}/verify`, { code }),
-  submitTelegram2FA: (ws: string, accountId: string, password: string) =>
-    api.post<TelegramAccount>(`/api/v1/workspaces/${ws}/telegram/accounts/${accountId}/2fa`, { password }),
+  startTelegramAuth: (ws: string, phone: string, accountId?: string) =>
+    api.post<AuthFlow>(`/api/v1/workspaces/${ws}/telegram/auth/start`, { phone, account_id: accountId ?? null }),
+  submitTelegramCode: (ws: string, flowId: string, code: string) =>
+    api.post<AuthFlow>(`/api/v1/workspaces/${ws}/telegram/auth/${flowId}/code`, { code }),
+  submitTelegramPassword: (ws: string, flowId: string, password: string) =>
+    api.post<AuthFlow>(`/api/v1/workspaces/${ws}/telegram/auth/${flowId}/password`, { password }),
   refreshTelegramChannels: (ws: string, accountId: string) =>
-    api.post<TelegramChannel[]>(`/api/v1/workspaces/${ws}/telegram/accounts/${accountId}/channels`),
+    api.post<JobRow>(`/api/v1/workspaces/${ws}/telegram/accounts/${accountId}/refresh-channels`),
   disconnectTelegramAccount: (ws: string, accountId: string) =>
     api.post<TelegramAccount>(`/api/v1/workspaces/${ws}/telegram/accounts/${accountId}/disconnect`),
   deleteTelegramAccount: (ws: string, accountId: string) =>
@@ -191,10 +203,14 @@ export const endpoints = {
     api.post<ChannelSet>(`/api/v1/workspaces/${ws}/channel-sets`, payload),
 
   content: (ws: string, statusFilter?: string) =>
-    api.get<ContentItem[]>(`/api/v1/workspaces/${ws}/content${statusFilter ? `?status_filter=${statusFilter}` : ""}`),
+    api
+      .get<{ items: (ContentItem & { excerpt: string })[]; next_cursor: string | null }>(
+        `/api/v1/workspaces/${ws}/content${statusFilter ? `?status=${statusFilter}` : ""}`,
+      )
+      .then((page) => page.items.map((i) => ({ ...i, plain_text: i.plain_text ?? i.excerpt }))),
   contentDetail: (ws: string, id: string) => api.get<ContentItem>(`/api/v1/workspaces/${ws}/content/${id}`),
   generateContent: (ws: string, payload: { instruction: string; channel_set_id?: string | null }) =>
-    api.post<ContentItem>(`/api/v1/workspaces/${ws}/content/generate`, payload),
+    api.post<{ content: ContentItem; job: JobRow }>(`/api/v1/workspaces/${ws}/content/generate`, payload),
   editContent: (ws: string, id: string, payload: { title: string; telegram_html: string; plain_text: string }) =>
     api.patch<ContentItem>(`/api/v1/workspaces/${ws}/content/${id}`, payload),
   submitContent: (ws: string, id: string) => api.post<ContentItem>(`/api/v1/workspaces/${ws}/content/${id}/submit`),
@@ -206,7 +222,7 @@ export const endpoints = {
   costDashboard: (ws: string) => api.get<CostDashboard>(`/api/v1/workspaces/${ws}/analytics/costs`),
   aiStatus: (ws: string) => api.get<AIStatus>(`/api/v1/workspaces/${ws}/settings/ai-status`),
 
-  jobs: (ws: string) => api.get<JobRow[]>(`/api/v1/workspaces/${ws}/jobs`),
+  jobs: (ws: string) => api.get<{ items: JobRow[]; next_cursor: string | null; counts: Record<string, number> }>(`/api/v1/workspaces/${ws}/jobs`),
 
   media: (ws: string) => api.get<MediaAsset[]>(`/api/v1/workspaces/${ws}/media`),
   uploadMedia: (ws: string, file: File) => {

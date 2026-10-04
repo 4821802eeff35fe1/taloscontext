@@ -37,6 +37,8 @@ class FakeAIProvider(TextAIProvider):
         temperature: float = 0.7,
     ) -> TextCompletionResult:
         fingerprint = hashlib.sha1(user_prompt.encode("utf-8")).hexdigest()[:16]
+        if "You edit Telegram channel posts" in system_prompt:
+            return self._edit(user_prompt, system_prompt, fingerprint)
         body = {
             "schema_version": 1,
             "topic": "Fake generated topic",
@@ -74,6 +76,37 @@ class FakeAIProvider(TextAIProvider):
 
     async def healthcheck(self) -> bool:
         return True
+
+    def _edit(self, user_prompt: str, system_prompt: str, fingerprint: str) -> TextCompletionResult:
+        """Deterministic, recognisable edits so tests can assert on the outcome."""
+        task = user_prompt.split("\n", 1)[0]
+        current = user_prompt.split("Current post (Telegram HTML):\n", 1)[-1]
+        title_line = next((ln for ln in user_prompt.splitlines() if ln.startswith("Current title: ")), "")
+        title = title_line.removeprefix("Current title: ")
+        html, cta = current, None
+        if "Shorten" in task:
+            html = current[: max(20, len(current) // 2)].rstrip() + "…"
+        elif "Expand" in task:
+            html = current + "\n\nДополнительная деталь: проверяйте гипотезы на небольшом бюджете."
+        elif "headline" in task:
+            title = f"Лучше: {title}" if title else "Новый заголовок"
+        elif "call-to-action" in task:
+            cta = "website"
+        elif "ONLY the selected fragment" in task:
+            selected = user_prompt.split("Selected fragment:\n«", 1)[-1].split("»", 1)[0]
+            html = current.replace(selected, f"<i>{selected} (переписано)</i>", 1) if selected else current
+        else:
+            html = current + "\n\n<i>(отредактировано)</i>"
+        content = json.dumps({"title": title, "telegram_html": html, "cta_key": cta, "notes": task[:80]},
+                             ensure_ascii=False)
+        prompt_tokens = max(1, len(system_prompt + user_prompt) // 4)
+        completion_tokens = max(1, len(content) // 4)
+        return TextCompletionResult(
+            content=content,
+            usage=TextCompletionUsage(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                                      total_tokens=prompt_tokens + completion_tokens, raw={"fake": True}),
+            provider=self.name, model="fake-gpt", latency_ms=5, provider_request_id=f"fake-edit-{fingerprint}",
+        )
 
 
 class FakeImageProvider(ImageAIProvider):
