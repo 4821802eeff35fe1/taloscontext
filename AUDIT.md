@@ -26,7 +26,7 @@ Evidence is from this workspace on 2026-10-05. Fake providers were used througho
 ## Not verified live
 
 - No real Telegram login, 2FA, publishing, FloodWait or metrics traffic.
-- No real Timeweb generation, pricing invoice reconciliation or image traffic.
+- Timeweb pricing invoice reconciliation and real image traffic remain unverified. One successful live text generation is recorded below.
 - No public HTTPS deployment, email/Telegram notification transport, backup restore drill, penetration test or large-scale load/soak test.
 - Browser acceptance uses Chromium; other browsers and comprehensive assistive-technology testing remain unverified.
 
@@ -71,3 +71,17 @@ The stack was rebuilt from the release commit and started with an env file copie
 - `.env.example` left `TELETHON_SESSION_ENCRYPTION_KEY` empty, so the first "Add Telegram account" (even with the fake provider) returned HTTP 500. The template now has `dev-only-` placeholders, production startup rejects them, and a missing key yields a 503 that names the variable.
 
 After the fixes, on the rebuilt seven-container stack: backend 120 tests (SQLite) and the same suite on PostgreSQL 16 + Redis 7, Alembic upgrade/downgrade/upgrade + `alembic check`, frontend typecheck, 25 Vitest tests, production build, `docker compose config`, Playwright 8/8 against Nginx + API + worker + scheduler, and `scripts/verify_compose.py` (restart acceptance) — all passed. External providers remained fake; nothing here is a live Telegram or Timeweb verification.
+
+
+## Post-deployment text-generation repair
+
+On 2026-10-05, the server environment still contained `УКАЖИ_ID_АГЕНТА` in
+TIMEWEB_AGENT_BASE_URL despite a configured agent id. Corrected that URL from the
+configured id. A live request then exposed the agent model's HTTP 400 rejection of
+temperature. Added bounded unsupported-parameter adaptation and six mocked HTTP
+regressions; the current SQLite/fakeredis suite passed 126 tests and Ruff passed.
+Installed the adapter in the server source and Python package. The original failed
+content job subsequently completed successfully: DRAFT, 644 plain-text characters,
+17810 input tokens, 1211 output tokens, recorded estimated cost 6.4436 RUB.
+No Telegram publication was issued. This is a live text integration check, not
+invoice reconciliation or a real Telegram verification.
