@@ -21,7 +21,12 @@ from app.services.telegram.account_service import TelegramAccountService
 
 
 async def _setup(db_session, n=3, status=ContentStatus.PUBLISHING):
-    ws = uuid.uuid4()
+    from app.models.identity import Workspace
+
+    ws_row = Workspace(name='W', slug=f'w-{uuid.uuid4().hex[:8]}')
+    db_session.add(ws_row)
+    await db_session.flush()
+    ws = ws_row.id
     account = TelegramAccount(
         workspace_id=ws, phone_encrypted="x", phone_masked="+1*",
         status=TelegramAccountStatus.CONNECTED,

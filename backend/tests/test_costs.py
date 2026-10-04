@@ -19,8 +19,8 @@ def test_compute_cost_matches_formula():
 
 
 @pytest.mark.asyncio
-async def test_record_ai_request_persists_cost_event(db_session):
-    workspace_id = uuid.uuid4()
+async def test_record_ai_request_persists_cost_event(db_session, workspace):
+    workspace_id = workspace.id
     service = CostService(db_session)
     request = await service.record_ai_request(
         workspace_id=workspace_id, content_item_id=None, provider="fake-ai", model="fake-gpt",
@@ -34,8 +34,8 @@ async def test_record_ai_request_persists_cost_event(db_session):
 
 
 @pytest.mark.asyncio
-async def test_budget_guard_blocks_when_daily_cap_would_be_exceeded(db_session):
-    workspace_id = uuid.uuid4()
+async def test_budget_guard_blocks_when_daily_cap_would_be_exceeded(db_session, workspace):
+    workspace_id = workspace.id
     service = CostService(db_session)
     config = AutopilotConfig(
         workspace_id=workspace_id, daily_budget_rub=Decimal(10),
@@ -50,8 +50,8 @@ async def test_budget_guard_blocks_when_daily_cap_would_be_exceeded(db_session):
 
 
 @pytest.mark.asyncio
-async def test_budget_guard_blocks_on_monthly_cap(db_session):
-    workspace_id = uuid.uuid4()
+async def test_budget_guard_blocks_on_monthly_cap(db_session, workspace):
+    workspace_id = workspace.id
     service = CostService(db_session)
     config = AutopilotConfig(
         workspace_id=workspace_id, daily_budget_rub=Decimal(1000),

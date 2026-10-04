@@ -8,9 +8,9 @@ from app.services.ai.service import AIService
 
 
 @pytest.mark.asyncio
-async def test_generate_post_returns_valid_result_and_records_one_ai_request(db_session):
+async def test_generate_post_returns_valid_result_and_records_one_ai_request(db_session, workspace):
     service = AIService(db_session, FakeAIProvider(), FakeImageProvider())
-    workspace_id = uuid.uuid4()
+    workspace_id = workspace.id
 
     result, cost = await service.generate_post(
         workspace_id=workspace_id, content_item_id=None, tone_context="", knowledge_context="",

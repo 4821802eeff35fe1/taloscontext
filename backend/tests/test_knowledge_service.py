@@ -8,7 +8,7 @@ from app.services.knowledge.service import KnowledgeService
 
 
 @pytest.mark.asyncio
-async def test_telegram_export_importer_extracts_text_messages(db_session):
+async def test_telegram_export_importer_extracts_text_messages(db_session, workspace):
     export = {
         "name": "Test Channel",
         "messages": [
@@ -23,7 +23,7 @@ async def test_telegram_export_importer_extracts_text_messages(db_session):
     }
     service = KnowledgeService(db_session)
     doc = await service.ingest_telegram_export(
-        workspace_id=uuid.uuid4(), title="Historical export", export_json=export
+        workspace_id=workspace.id, title="Historical export", export_json=export
     )
 
     assert "Hello world" in doc.raw_text

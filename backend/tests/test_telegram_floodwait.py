@@ -20,7 +20,12 @@ from app.services.telegram.base import TelegramErrorKind, TelegramOperationError
 
 @pytest.mark.asyncio
 async def test_flood_wait_sets_account_wait_window_and_keeps_publication_pending(db_session):
-    workspace_id = uuid.uuid4()
+    from app.models.identity import Workspace
+
+    ws_row = Workspace(name='W', slug=f'w-{uuid.uuid4().hex[:8]}')
+    db_session.add(ws_row)
+    await db_session.flush()
+    workspace_id = ws_row.id
     account = TelegramAccount(
         workspace_id=workspace_id, phone_encrypted="enc", phone_masked="+1***67",
         status=TelegramAccountStatus.CONNECTED,

@@ -16,7 +16,12 @@ async def _publications_of(db_session, batch_id):
 
 
 async def _make_channel_set_with_n_channels(db_session, n: int):
-    workspace_id = uuid.uuid4()
+    from app.models.identity import Workspace
+
+    ws_row = Workspace(name='W', slug=f'w-{uuid.uuid4().hex[:8]}')
+    db_session.add(ws_row)
+    await db_session.flush()
+    workspace_id = ws_row.id
     account = TelegramAccount(
         workspace_id=workspace_id, phone_encrypted="enc", phone_masked="+1***67",
         status=TelegramAccountStatus.CONNECTED,

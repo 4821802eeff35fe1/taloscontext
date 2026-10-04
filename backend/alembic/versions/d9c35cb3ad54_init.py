@@ -554,3 +554,21 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     # ### end Alembic commands ###
+    # Autogenerate does not drop native PG enum types; without this a
+    # downgrade followed by upgrade fails with DuplicateObject.
+    sa.Enum(name='ai_operation_cost_event').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='ai_operation').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='ai_request_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='autopilot_mode').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='batch_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='channel_health').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='channel_set_mode').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='content_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='idea_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='job_attempt_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='job_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='job_type').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='media_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='publication_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='telegram_account_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='workspace_role').drop(op.get_bind(), checkfirst=True)
