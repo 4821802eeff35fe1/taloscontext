@@ -17,20 +17,30 @@ export function GeneratePostDialog({
 }) {
   const client = useQueryClient();
   const [instruction, setInstruction] = useState("");
-  const [channelSetId, setChannelSetId] = useState<string | undefined>(undefined);
+  const [channelSetId, setChannelSetId] = useState<string | undefined>(
+    undefined,
+  );
   const [error, setError] = useState<string | null>(null);
 
-  const channelSets = useQuery({ queryKey: ["channel-sets", workspaceId], queryFn: () => endpoints.channelSets(workspaceId) });
+  const channelSets = useQuery({
+    queryKey: ["channel-sets", workspaceId],
+    queryFn: () => endpoints.channelSets(workspaceId),
+  });
 
   const generate = useMutation({
-    mutationFn: () => endpoints.generateContent(workspaceId, { instruction, channel_set_id: channelSetId ?? null }),
+    mutationFn: () =>
+      endpoints.generateContent(workspaceId, {
+        instruction,
+        channel_set_id: channelSetId ?? null,
+      }),
     onSuccess: ({ content: item }) => {
       client.invalidateQueries({ queryKey: ["content", workspaceId] });
       onOpenChange(false);
       setInstruction("");
       onCreated(item.id);
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Generation failed"),
+    onError: (e) =>
+      setError(e instanceof ApiError ? e.message : "Generation failed"),
   });
 
   return (
@@ -48,8 +58,11 @@ export function GeneratePostDialog({
         }}
       >
         <div>
-          <label className="label">Instruction</label>
+          <label className="label" htmlFor="generation-instruction">
+            Instruction
+          </label>
           <textarea
+            id="generation-instruction"
             className="input min-h-[90px]"
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
@@ -63,7 +76,10 @@ export function GeneratePostDialog({
             value={channelSetId}
             onValueChange={setChannelSetId}
             placeholder="Choose later"
-            options={(channelSets.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
+            options={(channelSets.data ?? []).map((s) => ({
+              value: s.id,
+              label: s.name,
+            }))}
           />
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}

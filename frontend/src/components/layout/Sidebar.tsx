@@ -12,6 +12,10 @@ const GROUPS: NavGroup[] = [
     items: [
       { label: "Posts", to: "/content" },
       { label: "Approval", to: "/approval" },
+      { label: "Calendar", to: "/calendar" },
+      { label: "Schedules", to: "/schedules" },
+      { label: "Series", to: "/series" },
+      { label: "Ideas", to: "/ideas" },
     ],
   },
   {
@@ -20,6 +24,22 @@ const GROUPS: NavGroup[] = [
       { label: "Channels", to: "/channels" },
       { label: "Channel Sets", to: "/channel-sets" },
       { label: "Accounts", to: "/accounts" },
+    ],
+  },
+  {
+    title: "AI",
+    items: [
+      { label: "Knowledge", to: "/knowledge" },
+      { label: "Tone of Voice", to: "/tone" },
+      { label: "Sources", to: "/sources" },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      { label: "Settings", to: "/settings" },
+      { label: "Audit Log", to: "/audit" },
+      { label: "Notifications", to: "/notifications" },
     ],
   },
   { title: "Media", items: [{ label: "Gallery", to: "/media" }] },
@@ -37,7 +57,7 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="flex h-screen w-60 flex-col border-r border-surface-border bg-surface px-3 py-4">
+    <aside className="flex h-dvh sticky top-0 w-56 shrink-0 flex-col border-r border-surface-border bg-surface px-3 py-4">
       <div className="mb-6 flex items-center gap-2 px-2">
         <div className="h-6 w-6 rounded-md bg-accent" />
         <span className="text-sm font-semibold tracking-tight">ChannelOS</span>

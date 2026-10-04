@@ -14,10 +14,13 @@ export function useSession() {
 
 export function useWorkspaces() {
   const { workspaceId, setWorkspaceId } = useWorkspaceStore();
-  const query = useQuery({ queryKey: ["workspaces"], queryFn: endpoints.workspaces });
+  const query = useQuery({
+    queryKey: ["workspaces"],
+    queryFn: endpoints.workspaces,
+  });
 
   useEffect(() => {
-    if (!workspaceId && query.data && query.data.length > 0) {
+    if (query.data?.length && !query.data.some((w) => w.id === workspaceId)) {
       setWorkspaceId(query.data[0].id);
     }
   }, [query.data, workspaceId, setWorkspaceId]);
@@ -30,5 +33,7 @@ export function useLogout() {
   return async () => {
     await endpoints.logout();
     client.clear();
+    useWorkspaceStore.getState().setWorkspaceId(null);
+    window.location.assign("/login");
   };
 }

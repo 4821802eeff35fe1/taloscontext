@@ -11,39 +11,103 @@
   * {
     @apply border-surface-border;
   }
+  html {
+    color-scheme: dark;
+  }
   body {
-    @apply bg-surface text-ink;
+    @apply bg-surface text-ink text-sm;
+    font-feature-settings: "cv11", "ss01";
+  }
+  /* Visible keyboard focus everywhere, never on mouse click. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/70 ring-offset-2 ring-offset-surface;
+  }
+  ::selection {
+    @apply bg-accent/40;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-surface-border;
+    border: 3px solid transparent;
+    background-clip: content-box;
   }
 }
 
 @layer components {
   .card {
-    @apply rounded-xl border border-surface-border bg-surface-raised p-5;
-  }
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
-      transition-colors disabled:opacity-50 disabled:pointer-events-none;
-  }
-  .btn-primary {
-    @apply btn bg-accent text-accent-foreground hover:bg-accent/90;
-  }
-  .btn-secondary {
-    @apply btn bg-surface-overlay text-ink hover:bg-surface-overlay/70 border border-surface-border;
-  }
-  .btn-ghost {
-    @apply btn text-ink-muted hover:text-ink hover:bg-surface-overlay;
-  }
-  .btn-danger {
-    @apply btn bg-danger/15 text-danger hover:bg-danger/25;
+    @apply rounded-xl border border-surface-border bg-surface-raised;
   }
   .input {
-    @apply w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-sm
-      text-ink placeholder:text-ink-faint outline-none focus:border-accent focus:ring-1 focus:ring-accent/40;
+    @apply h-9 w-full rounded-lg border border-surface-border bg-surface-sunken px-3 text-sm text-ink
+      placeholder:text-ink-faint transition-colors hover:border-ink-faint/40
+      focus:border-accent focus:outline-none focus-visible:ring-0 disabled:opacity-50;
   }
   .label {
     @apply mb-1.5 block text-xs font-medium text-ink-muted;
   }
-  .badge {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  .skeleton {
+    @apply rounded-md bg-surface-overlay;
+    background-image: linear-gradient(
+      90deg,
+      transparent 0,
+      rgba(255, 255, 255, 0.04) 50%,
+      transparent 100%
+    );
+    background-size: 400px 100%;
+    @apply animate-shimmer;
+  }
+  /* Telegram post rendering (preview + editor content) */
+  .tg-content {
+    @apply whitespace-pre-wrap break-words text-[14.5px] leading-[1.45] text-tg-text;
+  }
+  .tg-content p {
+    @apply min-h-[1em];
+  }
+  .tg-content b,
+  .tg-content strong {
+    @apply font-semibold;
+  }
+  .tg-content i,
+  .tg-content em {
+    @apply italic;
+  }
+  .tg-content u {
+    @apply underline;
+  }
+  .tg-content s {
+    @apply line-through;
+  }
+  .tg-content a {
+    @apply text-tg-link hover:underline;
+  }
+  .tg-content code {
+    @apply rounded bg-black/30 px-1 font-mono text-[13px];
+  }
+  .tg-content pre {
+    @apply my-1 overflow-x-auto rounded-md bg-black/30 p-2 font-mono text-[13px];
+  }
+  .tg-content blockquote {
+    @apply my-1 border-l-[3px] border-tg-link bg-tg-link/10 py-0.5 pl-2.5 pr-2;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-accent-foreground hover:bg-accent-hover;
+  }
+  .btn-secondary {
+    @apply btn border bg-surface-overlay hover:bg-surface-hover;
+  }
+  .btn-ghost {
+    @apply btn text-ink-muted hover:bg-surface-overlay hover:text-ink;
+  }
+  .btn-danger {
+    @apply btn bg-danger/15 text-danger hover:bg-danger/25;
   }
 }

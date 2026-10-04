@@ -1,56 +1,143 @@
 import { useQuery } from "@tanstack/react-query";
 import { endpoints } from "@/lib/api";
-import { StatTile, Card } from "@/components/ui/Card";
-
-export function CostDashboardPage({ workspaceId }: { workspaceId: string }) {
-  const costs = useQuery({ queryKey: ["costs", workspaceId], queryFn: () => endpoints.costDashboard(workspaceId) });
-  const aiStatus = useQuery({ queryKey: ["ai-status", workspaceId], queryFn: () => endpoints.aiStatus(workspaceId) });
-
-  if (!costs.data) return null;
-
-  const monthPct = Math.min(100, (parseFloat(costs.data.month_rub) / Math.max(1, parseFloat(costs.data.month_budget_rub))) * 100);
-
+import {
+  Card,
+  PageHeader,
+  StatTile,
+  ErrorState,
+  SkeletonRows,
+  EmptyState,
+} from "@/components/ui/primitives";
+import { rub } from "@/lib/format";
+export function BudgetBar({
+  spent,
+  budget,
+  warning = 80,
+}: {
+  spent: string;
+  budget: string;
+  warning?: number;
+}) {
+  const pct =
+    Number(budget) > 0
+      ? (Number(spent) / Number(budget)) * 100
+      : Number(spent) > 0
+        ? 100
+        : 0;
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-ink">AI cost dashboard</h1>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Today" value={`${costs.data.today_rub} ₽`} />
-        <StatTile label="This month" value={`${costs.data.month_rub} ₽`} />
-        <StatTile label="Monthly budget" value={`${costs.data.month_budget_rub} ₽`} />
-        <StatTile label="Forecast (month end)" value={`${costs.data.forecast_month_end_rub} ₽`} />
+    <div className="space-y-2">
+      <div className="flex justify-between text-xs">
+        <span>
+          {rub(spent)} / {rub(budget)}
+        </span>
+        <span>{pct.toFixed(0)}%</span>
       </div>
-
-      <Card>
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-ink">Monthly budget usage</span>
-          <span className="text-ink-muted">{monthPct.toFixed(0)}%</span>
-        </div>
-        <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-surface-overlay">
-          <div
-            className={monthPct >= 100 ? "h-full rounded-full bg-danger" : monthPct >= 80 ? "h-full rounded-full bg-warning" : "h-full rounded-full bg-accent"}
-            style={{ width: `${monthPct}%` }}
-          />
-        </div>
+      <div
+        role="progressbar"
+        aria-label="Budget usage"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.min(100, pct)}
+        className="h-2 overflow-hidden rounded bg-surface-overlay"
+      >
+        <div
+          className={
+            pct >= 100
+              ? "h-full bg-danger"
+              : pct >= warning
+                ? "h-full bg-warning"
+                : "h-full bg-accent"
+          }
+          style={{ width: `${Math.min(100, pct)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+export function CostDashboardPage({
+  workspaceId: ws,
+}: {
+  workspaceId: string;
+}) {
+  const query = useQuery({
+    queryKey: ["costs", ws],
+    queryFn: () => endpoints.costDashboard(ws),
+  });
+  if (query.isPending) return <SkeletonRows />;
+  if (query.isError)
+    return (
+      <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+    );
+  const d = query.data;
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="AI costs"
+        description="Recorded usage and configured rates for every AI attempt."
+      />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          ["Today", d.today_rub],
+          ["7 days", d.week_rub],
+          ["Month", d.month_rub],
+          ["Forecast", d.forecast_month_end_rub],
+        ].map(([label, value]) => (
+          <StatTile key={label} label={label} value={rub(value)} />
+        ))}
+      </div>
+      <Card className="p-4 space-y-3">
+        <h2>Monthly budget</h2>
+        <BudgetBar
+          spent={d.month_rub}
+          budget={d.month_budget_rub}
+          warning={d.warning_pct}
+        />
+        <p className="text-xs text-ink-muted">
+          {d.input_tokens_month.toLocaleString()} input tokens ·{" "}
+          {d.output_tokens_month.toLocaleString()} output tokens
+        </p>
       </Card>
-
-      {aiStatus.data && (
-        <Card className="space-y-2 text-sm">
-          <p className="font-medium text-ink">Provider status</p>
-          <p className="text-ink-muted">
-            Text: {aiStatus.data.text_provider} {aiStatus.data.text_provider_is_fake && "(fake, dev mode)"}
-          </p>
-          <p className="text-ink-muted">
-            Image: {aiStatus.data.image_provider} — {aiStatus.data.image_provider_status}
-            {aiStatus.data.image_provider_is_fake && " (fake, dev mode)"}
-          </p>
-          {aiStatus.data.image_provider_status === "UNAVAILABLE" && !aiStatus.data.image_provider_is_fake && (
-            <p className="text-xs text-ink-faint">
-              Image provider is not available through the configured Timeweb API. Text generation and publishing are unaffected.
-            </p>
-          )}
-        </Card>
-      )}
+      <div className="grid gap-4 md:grid-cols-2">
+        {[
+          ["Spend breakdown", d.breakdown],
+          ["By channel set", d.by_channel_set],
+          ["By category", d.by_category],
+          ["By provider", d.by_provider],
+        ].map(([label, rows]) => (
+          <Card className="p-4" key={String(label)}>
+            <h2 className="font-medium mb-3">{String(label)}</h2>
+            {typeof rows !== "string" &&
+              rows.map((row) => (
+                <div
+                  key={row.key}
+                  className="flex justify-between border-t py-2 text-sm"
+                >
+                  <span>
+                    {row.label} · {row.requests} calls
+                  </span>
+                  <span>{rub(row.cost_rub)}</span>
+                </div>
+              ))}
+            {typeof rows !== "string" && !rows.length && (
+              <EmptyState title="No usage yet" />
+            )}
+          </Card>
+        ))}
+      </div>
+      <Card className="p-4">
+        <h2 className="font-medium mb-3">Most expensive content</h2>
+        {d.top_content.map((p) => (
+          <div
+            className="flex justify-between border-t py-2"
+            key={p.content_id}
+          >
+            <span>
+              {p.title} · {p.requests} calls
+            </span>
+            <span>{rub(p.cost_rub)}</span>
+          </div>
+        ))}
+      </Card>
     </div>
   );
 }

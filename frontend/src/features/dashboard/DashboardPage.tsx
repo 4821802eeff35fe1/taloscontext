@@ -1,92 +1,166 @@
 import { useQuery } from "@tanstack/react-query";
-import { endpoints } from "@/lib/api";
-import { StatTile, Card, EmptyState } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { endpoints, type PostBrief } from "@/lib/api";
+import {
+  Card,
+  StatTile,
+  PageHeader,
+  EmptyState,
+  ErrorState,
+  SkeletonRows,
+} from "@/components/ui/primitives";
 import { AppLink } from "@/components/ui/AppLink";
-
-export function DashboardPage({ workspaceId }: { workspaceId: string }) {
-  const channels = useQuery({ queryKey: ["channels", workspaceId], queryFn: () => endpoints.channels(workspaceId) });
-  const accounts = useQuery({
-    queryKey: ["telegram-accounts", workspaceId],
-    queryFn: () => endpoints.telegramAccounts(workspaceId),
-  });
-  const content = useQuery({ queryKey: ["content", workspaceId], queryFn: () => endpoints.content(workspaceId) });
-  const costs = useQuery({ queryKey: ["costs", workspaceId], queryFn: () => endpoints.costDashboard(workspaceId) });
-  const jobs = useQuery({ queryKey: ["jobs", workspaceId], queryFn: () => endpoints.jobs(workspaceId) });
-
-  const postsToday = content.data?.filter((c) => c.published_at?.startsWith(new Date().toISOString().slice(0, 10))).length ?? 0;
-  const scheduled = content.data?.filter((c) => c.status === "SCHEDULED").length ?? 0;
-  const pendingApproval = content.data?.filter((c) => c.status === "PENDING_APPROVAL").length ?? 0;
-  const failedJobs = jobs.data?.counts.FAILED ?? 0;
-
-  const monthPct = costs.data
-    ? Math.min(100, (parseFloat(costs.data.month_rub) / Math.max(1, parseFloat(costs.data.month_budget_rub))) * 100)
-    : 0;
-
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { rub, dateTime } from "@/lib/format";
+function Posts({ title, items }: { title: string; items: PostBrief[] }) {
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-ink">Overview</h1>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Managed channels" value={channels.data?.length ?? "—"} />
-        <StatTile label="Connected accounts" value={accounts.data?.filter((a) => a.status === "CONNECTED").length ?? "—"} />
-        <StatTile label="Posts today" value={postsToday} />
-        <StatTile label="Scheduled" value={scheduled} />
-        <StatTile label="Pending approval" value={pendingApproval} />
-        <StatTile label="Failed jobs" value={failedJobs} />
-      </div>
-
-      {costs.data && (
-        <Card>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-ink">AI spend this month</span>
-            <span className="text-sm text-ink-muted">
-              {costs.data.month_rub} ₽ / {costs.data.month_budget_rub} ₽
-            </span>
-          </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-overlay">
-            <div
-              className="h-full rounded-full bg-accent"
-              style={{ width: `${monthPct}%` }}
-            />
-          </div>
-          <p className="mt-2 text-xs text-ink-faint">
-            Forecast at current pace: {costs.data.forecast_month_end_rub} ₽ by month end · Today: {costs.data.today_rub} ₽
-          </p>
-        </Card>
-      )}
-
-      <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-ink">Recent posts</span>
-          <AppLink to="/content" className="text-xs text-accent hover:underline">
-            View all
+    <Card className="p-4">
+      <h2 className="mb-3 font-medium">{title}</h2>
+      {!items.length ? (
+        <EmptyState title="No posts yet" />
+      ) : (
+        items.map((p) => (
+          <AppLink
+            to={`/content?post=${p.content_id}`}
+            key={p.content_id}
+            className="block border-t py-3 text-sm"
+          >
+            <div className="flex justify-between gap-2">
+              <span>{p.title}</span>
+              <StatusBadge status={p.status} />
+            </div>
+            <p className="text-xs text-ink-muted mt-1">
+              {dateTime(p.at)} · {p.channel_set_name} · {p.published}/
+              {p.targets} delivered · {p.views} views
+            </p>
           </AppLink>
-        </div>
-        {content.data && content.data.length > 0 ? (
-          <div className="divide-y divide-surface-border">
-            {content.data.slice(0, 6).map((item) => (
-              <div key={item.id} className="flex items-center justify-between py-2.5">
-                <div>
-                  <p className="text-sm text-ink">{item.title || item.topic || "Untitled"}</p>
-                  <p className="text-xs text-ink-faint">{item.category || "uncategorized"}</p>
-                </div>
-                <StatusBadge status={item.status} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="No content yet"
-            description="Generate your first AI post to see it here."
-            action={
-              <AppLink to="/content" className="btn-primary">
-                Create post
-              </AppLink>
-            }
+        ))
+      )}
+    </Card>
+  );
+}
+export function DashboardPage({ workspaceId: ws }: { workspaceId: string }) {
+  const query = useQuery({
+    queryKey: ["dashboard", ws],
+    queryFn: () => endpoints.dashboard(ws),
+    refetchInterval: 30000,
+  });
+  const costs = useQuery({
+    queryKey: ["costs", ws],
+    queryFn: () => endpoints.costDashboard(ws),
+  });
+  if (query.isPending) return <SkeletonRows rows={8} />;
+  if (query.isError)
+    return (
+      <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+    );
+  const d = query.data;
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Overview"
+        description="Your channel network at a glance."
+      />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
+        {[
+          ["Channels", d.channels],
+          ["Accounts", d.accounts],
+          ["Posts today", d.posts_today],
+          ["Scheduled", d.scheduled],
+          ["Pending approval", d.pending_approval],
+          ["Failed (7d)", d.failed_publications_7d + d.failed_jobs_7d],
+        ].map(([label, value]) => (
+          <StatTile key={label} label={String(label)} value={value} />
+        ))}
+      </div>
+      {costs.data && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatTile label="AI today" value={rub(costs.data.today_rub)} />
+          <StatTile
+            label="Month / budget"
+            value={rub(costs.data.month_rub)}
+            sub={`of ${rub(costs.data.month_budget_rub)}`}
           />
-        )}
-      </Card>
+          <StatTile
+            label="Month forecast"
+            value={rub(costs.data.forecast_month_end_rub)}
+          />
+        </div>
+      )}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Posts title="Next scheduled" items={d.next_scheduled} />
+        <Posts title="Recently published" items={d.recent_published} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="p-4">
+          <h2 className="font-medium mb-3">Recent failures</h2>
+          {d.recent_failed.length ? (
+            d.recent_failed.map((p, i) => (
+              <AppLink
+                key={i}
+                to={`/content?post=${p.content_id}`}
+                className="block border-t py-3"
+              >
+                <p>
+                  {p.title} · {p.channel_title}
+                </p>
+                <p className="text-xs text-danger">{p.error}</p>
+              </AppLink>
+            ))
+          ) : (
+            <EmptyState title="No publication failures" />
+          )}
+        </Card>
+        <Card className="p-4 space-y-3">
+          <h2 className="font-medium">System health</h2>
+          {Object.entries(d.system).map(([name, check]) => (
+            <div className="flex justify-between" key={name}>
+              <span>{name}</span>
+              <span className={check.ok ? "text-success" : "text-warning"}>
+                {check.ok ? "Online" : check.error || "Unavailable"}
+              </span>
+            </div>
+          ))}
+          <p className="text-xs text-ink-muted">
+            AI: {d.ai_provider.text} · Image: {d.ai_provider.image_status}
+          </p>
+          {d.telegram_accounts.map((a) => (
+            <div className="flex justify-between" key={a.id}>
+              <span>{a.phone}</span>
+              <StatusBadge status={a.status} />
+            </div>
+          ))}
+        </Card>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="p-4">
+          <h2 className="font-medium mb-3">Views · last 7 publish days</h2>
+          {d.has_metrics ? (
+            <div className="flex h-40 items-end gap-2">
+              {d.views_7d.map((day) => (
+                <div
+                  key={day.day}
+                  className="flex flex-1 flex-col items-center justify-end h-full gap-1"
+                >
+                  <span className="text-xs">{day.views}</span>
+                  <div
+                    className="w-full rounded-t bg-accent/60"
+                    style={{
+                      height: `${Math.max(2, (day.views / Math.max(1, ...d.views_7d.map((x) => x.views))) * 110)}px`,
+                    }}
+                  />
+                  <span className="text-2xs">{day.day.slice(5)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No metrics yet"
+              description="Metrics appear after publishing and the first refresh."
+            />
+          )}
+        </Card>
+        <Posts title="Top posts" items={d.top_posts} />
+      </div>
     </div>
   );
 }

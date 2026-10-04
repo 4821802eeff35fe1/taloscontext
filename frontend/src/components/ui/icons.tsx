@@ -1,7 +1,15 @@
 import type { SVGProps } from "react";
 
 function base(props: SVGProps<SVGSVGElement>) {
-  return { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, viewBox: "0 0 24 24", ...props };
+  return {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    viewBox: "0 0 24 24",
+    ...props,
+  };
 }
 
 export function ChevronDown(props: SVGProps<SVGSVGElement>) {

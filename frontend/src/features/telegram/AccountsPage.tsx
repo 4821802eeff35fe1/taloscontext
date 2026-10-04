@@ -4,9 +4,19 @@ import { endpoints, ApiError, type TelegramAccount } from "@/lib/api";
 import { Card, EmptyState } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Dialog } from "@/components/ui/Dialog";
+import { ConfirmDialog } from "@/components/ui/overlays";
+import { toast } from "@/components/ui/toast";
 import { Plus, Refresh } from "@/components/ui/icons";
 
-function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: string; open: boolean; onOpenChange: (v: boolean) => void }) {
+function AddAccountDialog({
+  workspaceId,
+  open,
+  onOpenChange,
+}: {
+  workspaceId: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const client = useQueryClient();
   const [step, setStep] = useState<"phone" | "code" | "2fa">("phone");
   const [phone, setPhone] = useState("");
@@ -35,7 +45,8 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
       setStep("code");
       setError(null);
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Failed to send code"),
+    onError: (e) =>
+      setError(e instanceof ApiError ? e.message : "Failed to send code"),
   });
 
   const submitCode = useMutation({
@@ -50,25 +61,32 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
         setError(flow.error ?? `Login is ${flow.state.toLowerCase()}`);
         return;
       }
-      client.invalidateQueries({ queryKey: ["telegram-accounts", workspaceId] });
+      client.invalidateQueries({
+        queryKey: ["telegram-accounts", workspaceId],
+      });
       onOpenChange(false);
       reset();
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Invalid code"),
+    onError: (e) =>
+      setError(e instanceof ApiError ? e.message : "Invalid code"),
   });
 
   const submit2FA = useMutation({
-    mutationFn: () => endpoints.submitTelegramPassword(workspaceId, flowId!, password),
+    mutationFn: () =>
+      endpoints.submitTelegramPassword(workspaceId, flowId!, password),
     onSuccess: (flow) => {
       if (flow.state !== "COMPLETED") {
         setError(flow.error ?? `Login is ${flow.state.toLowerCase()}`);
         return;
       }
-      client.invalidateQueries({ queryKey: ["telegram-accounts", workspaceId] });
+      client.invalidateQueries({
+        queryKey: ["telegram-accounts", workspaceId],
+      });
       onOpenChange(false);
       reset();
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Invalid password"),
+    onError: (e) =>
+      setError(e instanceof ApiError ? e.message : "Invalid password"),
   });
 
   return (
@@ -106,7 +124,10 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
-          <button className="btn-primary w-full" disabled={startLogin.isPending}>
+          <button
+            className="btn-primary w-full"
+            disabled={startLogin.isPending}
+          >
             Send code
           </button>
         </form>
@@ -122,10 +143,20 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
         >
           <div>
             <label className="label">Verification code</label>
-            <input className="input" value={code} onChange={(e) => setCode(e.target.value)} required autoFocus />
+            <input
+              aria-label="Verification code"
+              className="input"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              required
+              autoFocus
+            />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
-          <button className="btn-primary w-full" disabled={submitCode.isPending}>
+          <button
+            className="btn-primary w-full"
+            disabled={submitCode.isPending}
+          >
             Verify
           </button>
         </form>
@@ -160,50 +191,97 @@ function AddAccountDialog({ workspaceId, open, onOpenChange }: { workspaceId: st
   );
 }
 
-function AccountRow({ workspaceId, account }: { workspaceId: string; account: TelegramAccount }) {
+function AccountRow({
+  workspaceId,
+  account,
+}: {
+  workspaceId: string;
+  account: TelegramAccount;
+}) {
   const client = useQueryClient();
 
+  const [confirm, setConfirm] = useState<"disconnect" | "delete" | null>(null);
   const refresh = useMutation({
-    mutationFn: () => endpoints.refreshTelegramChannels(workspaceId, account.id),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["channels", workspaceId] }),
+    mutationFn: () =>
+      endpoints.refreshTelegramChannels(workspaceId, account.id),
+    onSuccess: () => {
+      toast.success("Channel import queued");
+      void client.invalidateQueries({ queryKey: ["channels", workspaceId] });
+    },
+    onError: (e) => toast.error(e.message),
   });
   const disconnect = useMutation({
-    mutationFn: () => endpoints.disconnectTelegramAccount(workspaceId, account.id),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["telegram-accounts", workspaceId] }),
+    mutationFn: () =>
+      endpoints.disconnectTelegramAccount(workspaceId, account.id),
+    onSuccess: () =>
+      client.invalidateQueries({
+        queryKey: ["telegram-accounts", workspaceId],
+      }),
   });
   const remove = useMutation({
     mutationFn: () => endpoints.deleteTelegramAccount(workspaceId, account.id),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["telegram-accounts", workspaceId] }),
+    onSuccess: () =>
+      client.invalidateQueries({
+        queryKey: ["telegram-accounts", workspaceId],
+      }),
   });
 
   return (
-    <div className="flex items-center justify-between py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 py-3">
       <div>
         <p className="text-sm text-ink">
           {account.first_name} {account.last_name}{" "}
-          <span className="text-ink-faint">{account.username ? `@${account.username}` : ""}</span>
+          <span className="text-ink-faint">
+            {account.username ? `@${account.username}` : ""}
+          </span>
         </p>
         <p className="text-xs text-ink-faint">{account.phone_masked}</p>
-        {account.last_error && <p className="mt-0.5 text-xs text-danger">{account.last_error}</p>}
+        {account.last_error && (
+          <p className="mt-0.5 text-xs text-danger">{account.last_error}</p>
+        )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={account.status} />
-        <button className="btn-ghost" title="Refresh channels" onClick={() => refresh.mutate()}>
+        <button
+          className="btn-ghost"
+          title="Refresh channels"
+          onClick={() => refresh.mutate()}
+        >
           <Refresh className="h-4 w-4" />
         </button>
-        <button className="btn-secondary" onClick={() => disconnect.mutate()}>
+        <button
+          className="btn-secondary"
+          onClick={() => setConfirm("disconnect")}
+        >
           Disconnect
         </button>
-        <button className="btn-danger" onClick={() => remove.mutate()}>
+        <button className="btn-danger" onClick={() => setConfirm("delete")}>
           Delete
         </button>
       </div>
+      <ConfirmDialog
+        open={!!confirm}
+        onOpenChange={(v) => !v && setConfirm(null)}
+        title={
+          confirm === "delete"
+            ? "Delete this account?"
+            : "Disconnect this account?"
+        }
+        destructive
+        onConfirm={() => {
+          if (confirm === "delete") remove.mutate();
+          else disconnect.mutate();
+          setConfirm(null);
+        }}
+      />
     </div>
   );
 }
 
 export function AccountsPage({ workspaceId }: { workspaceId: string }) {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(
+    new URLSearchParams(window.location.search).has("add"),
+  );
   const accounts = useQuery({
     queryKey: ["telegram-accounts", workspaceId],
     queryFn: () => endpoints.telegramAccounts(workspaceId),
@@ -230,7 +308,10 @@ export function AccountsPage({ workspaceId }: { workspaceId: string }) {
             title="No Telegram accounts connected"
             description="Connect a Telegram user account to start importing channels you administer."
             action={
-              <button className="btn-primary" onClick={() => setDialogOpen(true)}>
+              <button
+                className="btn-primary"
+                onClick={() => setDialogOpen(true)}
+              >
                 Add account
               </button>
             }
@@ -238,7 +319,11 @@ export function AccountsPage({ workspaceId }: { workspaceId: string }) {
         )}
       </Card>
 
-      <AddAccountDialog workspaceId={workspaceId} open={dialogOpen} onOpenChange={setDialogOpen} />
+      <AddAccountDialog
+        workspaceId={workspaceId}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }

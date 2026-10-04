@@ -19,7 +19,12 @@ export function LoginPage() {
       if (mode === "login") {
         return endpoints.login(email, password);
       }
-      return endpoints.register(email, password, fullName, workspaceName);
+      return endpoints.register({
+        email,
+        password,
+        full_name: fullName,
+        workspace_name: workspaceName,
+      });
     },
     onSuccess: async () => {
       setError(null);
@@ -27,13 +32,17 @@ export function LoginPage() {
       navigate({ to: "/" });
     },
     onError: (err) => {
-      setError(err instanceof ApiError ? err.message : "Could not reach the ChannelOS API — check that the backend is running.");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not reach the ChannelOS API — check that the backend is running.",
+      );
     },
   });
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
-      <div className="card w-full max-w-sm">
+      <div className="card p-6 w-full max-w-sm">
         <div className="mb-6 flex items-center gap-2">
           <div className="h-6 w-6 rounded-md bg-accent" />
           <span className="text-sm font-semibold">ChannelOS</span>
@@ -50,13 +59,23 @@ export function LoginPage() {
         >
           {mode === "register" && (
             <div>
-              <label className="label">Full name</label>
-              <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              <label className="label" htmlFor="auth-full-name">
+                Full name
+              </label>
+              <input
+                id="auth-full-name"
+                className="input"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
             </div>
           )}
           <div>
-            <label className="label">Email</label>
+            <label className="label" htmlFor="auth-email">
+              Email
+            </label>
             <input
+              id="auth-email"
               type="email"
               required
               className="input"
@@ -65,8 +84,11 @@ export function LoginPage() {
             />
           </div>
           <div>
-            <label className="label">Password</label>
+            <label className="label" htmlFor="auth-password">
+              Password
+            </label>
             <input
+              id="auth-password"
               type="password"
               required
               minLength={8}
@@ -77,8 +99,11 @@ export function LoginPage() {
           </div>
           {mode === "register" && (
             <div>
-              <label className="label">Workspace name</label>
+              <label className="label" htmlFor="auth-workspace-name">
+                Workspace name
+              </label>
               <input
+                id="auth-workspace-name"
                 required
                 className="input"
                 value={workspaceName}
@@ -89,7 +114,11 @@ export function LoginPage() {
 
           {error && <p className="text-sm text-danger">{error}</p>}
 
-          <button type="submit" className="btn-primary w-full" disabled={mutation.isPending}>
+          <button
+            type="submit"
+            className="btn-primary w-full"
+            disabled={mutation.isPending}
+          >
             {mode === "login" ? "Sign in" : "Create account"}
           </button>
         </form>
@@ -98,7 +127,9 @@ export function LoginPage() {
           className="mt-4 text-xs text-ink-muted hover:text-ink"
           onClick={() => setMode(mode === "login" ? "register" : "login")}
         >
-          {mode === "login" ? "Need a workspace? Create one" : "Already have an account? Sign in"}
+          {mode === "login"
+            ? "Need a workspace? Create one"
+            : "Already have an account? Sign in"}
         </button>
       </div>
     </div>

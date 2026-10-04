@@ -6,17 +6,31 @@ import { Select } from "@/components/ui/Select";
 
 const MODE_OPTIONS = [
   { value: "MANUAL", label: "Manual — nothing is created automatically" },
-  { value: "APPROVAL", label: "Approval — AI drafts land in the approval queue" },
-  { value: "AUTOPILOT", label: "Autopilot — AI drafts, approves, and schedules" },
+  {
+    value: "APPROVAL",
+    label: "Approval — AI drafts land in the approval queue",
+  },
+  {
+    value: "AUTOPILOT",
+    label: "Autopilot — AI drafts, approves, and schedules",
+  },
 ];
 
 export function AutopilotPage({ workspaceId }: { workspaceId: string }) {
   const client = useQueryClient();
-  const { data: config } = useQuery({ queryKey: ["autopilot", workspaceId], queryFn: () => endpoints.autopilot(workspaceId) });
-  const channelSets = useQuery({ queryKey: ["channel-sets", workspaceId], queryFn: () => endpoints.channelSets(workspaceId) });
+  const { data: config } = useQuery({
+    queryKey: ["autopilot", workspaceId],
+    queryFn: () => endpoints.autopilot(workspaceId),
+  });
+  const channelSets = useQuery({
+    queryKey: ["channel-sets", workspaceId],
+    queryFn: () => endpoints.channelSets(workspaceId),
+  });
 
   const [mode, setMode] = useState("MANUAL");
-  const [channelSetId, setChannelSetId] = useState<string | undefined>(undefined);
+  const [channelSetId, setChannelSetId] = useState<string | undefined>(
+    undefined,
+  );
   const [postsPerDay, setPostsPerDay] = useState(1);
   const [dailyBudget, setDailyBudget] = useState("50");
   const [monthlyBudget, setMonthlyBudget] = useState("1500");
@@ -43,7 +57,8 @@ export function AutopilotPage({ workspaceId }: { workspaceId: string }) {
         monthly_budget_rub: monthlyBudget,
         max_cost_per_post_rub: maxPostCost,
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["autopilot", workspaceId] }),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: ["autopilot", workspaceId] }),
   });
 
   return (
@@ -61,7 +76,10 @@ export function AutopilotPage({ workspaceId }: { workspaceId: string }) {
             value={channelSetId}
             onValueChange={setChannelSetId}
             placeholder="Choose a channel set"
-            options={(channelSets.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
+            options={(channelSets.data ?? []).map((s) => ({
+              value: s.id,
+              label: s.name,
+            }))}
           />
         </div>
         <div>
@@ -78,18 +96,34 @@ export function AutopilotPage({ workspaceId }: { workspaceId: string }) {
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="label">Daily budget (₽)</label>
-            <input className="input" value={dailyBudget} onChange={(e) => setDailyBudget(e.target.value)} />
+            <input
+              className="input"
+              value={dailyBudget}
+              onChange={(e) => setDailyBudget(e.target.value)}
+            />
           </div>
           <div>
             <label className="label">Monthly budget (₽)</label>
-            <input className="input" value={monthlyBudget} onChange={(e) => setMonthlyBudget(e.target.value)} />
+            <input
+              className="input"
+              value={monthlyBudget}
+              onChange={(e) => setMonthlyBudget(e.target.value)}
+            />
           </div>
           <div>
             <label className="label">Max per post (₽)</label>
-            <input className="input" value={maxPostCost} onChange={(e) => setMaxPostCost(e.target.value)} />
+            <input
+              className="input"
+              value={maxPostCost}
+              onChange={(e) => setMaxPostCost(e.target.value)}
+            />
           </div>
         </div>
-        <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
+        <button
+          className="btn-primary"
+          onClick={() => save.mutate()}
+          disabled={save.isPending}
+        >
           Save settings
         </button>
       </Card>

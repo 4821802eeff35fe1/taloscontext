@@ -1,123 +1,250 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { endpoints } from "@/lib/api";
-import { Card, EmptyState } from "@/components/ui/Card";
-import { Dialog } from "@/components/ui/Dialog";
-import { Select } from "@/components/ui/Select";
-import { Plus } from "@/components/ui/icons";
-
-const MODE_OPTIONS = [
-  { value: "EXACT", label: "Exact — same text everywhere" },
-  { value: "CTA_PER_CHANNEL", label: "CTA per channel" },
-  { value: "CONTACT_PER_CHANNEL", label: "Contact per channel" },
-  { value: "ADAPTED", label: "Adapted — AI rewrites per channel" },
-];
-
-function CreateChannelSetDialog({ workspaceId, open, onOpenChange }: { workspaceId: string; open: boolean; onOpenChange: (v: boolean) => void }) {
-  const client = useQueryClient();
-  const [name, setName] = useState("");
-  const [mode, setMode] = useState("EXACT");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const channels = useQuery({ queryKey: ["channels", workspaceId], queryFn: () => endpoints.channels(workspaceId) });
-
-  const create = useMutation({
-    mutationFn: () =>
-      endpoints.createChannelSet(workspaceId, {
-        name,
-        description: "",
-        mode,
-        channel_ids: Array.from(selected),
-      }),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["channel-sets", workspaceId] });
-      onOpenChange(false);
-      setName("");
-      setSelected(new Set());
-    },
-  });
-
+import { useQuery } from "@tanstack/react-query";
+import { endpoints, type ChannelSet, type ChannelSetDetail } from "@/lib/api";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Field,
+  Input,
+  PageHeader,
+  SkeletonRows,
+  Textarea,
+} from "@/components/ui/primitives";
+import { Select, Checkbox } from "@/components/ui/forms";
+import { Dialog, ConfirmDialog } from "@/components/ui/overlays";
+import { useOperation } from "@/hooks/useOperations";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AppLink } from "@/components/ui/AppLink";
+export function SetHealth({ set }: { set: ChannelSet }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="Create channel set" description="Group channels that receive the same content.">
+    <span
+      className={
+        set.healthy_count === set.member_count && set.member_count > 0
+          ? "text-success"
+          : "text-warning"
+      }
+    >
+      {set.healthy_count} / {set.member_count} ready
+    </span>
+  );
+}
+export function ChannelSetsPage({ workspaceId: ws }: { workspaceId: string }) {
+  const [editing, setEditing] = useState<ChannelSetDetail | null | undefined>(
+      () =>
+        new URLSearchParams(window.location.search).has("create")
+          ? null
+          : undefined,
+    ),
+    [selected, setSelected] = useState<string | null>(() =>
+      new URLSearchParams(window.location.search).get("set"),
+    ),
+    [remove, setRemove] = useState<string | null>(null);
+  const query = useQuery({
+      queryKey: ["channel-sets", ws],
+      queryFn: () => endpoints.channelSets(ws),
+    }),
+    detail = useQuery({
+      queryKey: ["channel-set", ws, selected],
+      queryFn: () => endpoints.channelSet(ws, selected!),
+      enabled: !!selected,
+    });
+  const action = useOperation(ws, (fn: () => Promise<unknown>) => fn());
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Channel sets"
+        description="Generate once and distribute to the whole set."
+        actions={
+          <Button variant="primary" onClick={() => setEditing(null)}>
+            New channel set
+          </Button>
+        }
+      />
+      {query.isPending ? (
+        <SkeletonRows />
+      ) : query.isError ? (
+        <ErrorState error={query.error} />
+      ) : !query.data.length ? (
+        <EmptyState title="No channel sets yet" />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {query.data.map((s) => (
+            <Card className="p-4 space-y-3" key={s.id}>
+              <h2>{s.name}</h2>
+              <p className="text-xs text-ink-muted">{s.description}</p>
+              <div className="flex justify-between text-xs">
+                <SetHealth set={s} />
+                <span>{s.mode}</span>
+              </div>
+              <Button onClick={() => setSelected(s.id)}>View details</Button>
+            </Card>
+          ))}
+        </div>
+      )}
+      <Dialog
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+        title={detail.data?.name || "Channel set"}
+        size="lg"
+      >
+        {detail.isPending ? (
+          <SkeletonRows />
+        ) : detail.isError ? (
+          <ErrorState error={detail.error} />
+        ) : (
+          detail.data && (
+            <div className="space-y-4">
+              <SetHealth set={detail.data} />
+              <p>
+                {detail.data.subscribers} subscribers ·{" "}
+                {detail.data.totals.views} views ·{" "}
+                {detail.data.totals.publications} publications
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setEditing(detail.data!);
+                    setSelected(null);
+                  }}
+                >
+                  Edit set
+                </Button>
+                <Button variant="danger" onClick={() => setRemove(selected)}>
+                  Delete
+                </Button>
+              </div>
+              {detail.data.channels.map((c) => (
+                <p key={c.id}>
+                  {c.title} · {c.account_label} · {c.health}
+                </p>
+              ))}
+              <h3>Recent posts</h3>
+              {detail.data.recent_posts.map((p) => (
+                <AppLink
+                  className="block border-t py-2"
+                  key={p.content_id}
+                  to={`/content?post=${p.content_id}`}
+                >
+                  {p.title} <StatusBadge status={p.status} />
+                </AppLink>
+              ))}
+            </div>
+          )
+        )}
+      </Dialog>
+      {editing !== undefined && (
+        <SetEditor
+          ws={ws}
+          set={editing}
+          onClose={() => setEditing(undefined)}
+        />
+      )}
+      <ConfirmDialog
+        open={!!remove}
+        onOpenChange={(o) => !o && setRemove(null)}
+        title="Delete this channel set?"
+        destructive
+        onConfirm={() => {
+          action.mutate(async () => {
+            await endpoints.deleteChannelSet(ws, remove!);
+            setSelected(null);
+          });
+          setRemove(null);
+        }}
+      />
+    </div>
+  );
+}
+function SetEditor({
+  ws,
+  set,
+  onClose,
+}: {
+  ws: string;
+  set: ChannelSetDetail | null;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(set?.name ?? ""),
+    [description, setDescription] = useState(set?.description ?? ""),
+    [mode, setMode] = useState(set?.mode ?? "EXACT"),
+    [selected, setSelected] = useState(set?.channels.map((c) => c.id) ?? []);
+  const channels = useQuery({
+    queryKey: ["channels", ws],
+    queryFn: () => endpoints.channels(ws),
+  });
+  const action = useOperation(ws, async () => {
+    const body = { name, description, mode, channel_ids: selected };
+    if (set) await endpoints.updateChannelSet(ws, set.id, body);
+    else await endpoints.createChannelSet(ws, body);
+    onClose();
+  });
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={set ? "Edit channel set" : "Create channel set"}
+    >
       <form
         className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
-          create.mutate();
+          action.mutate();
         }}
       >
-        <div>
-          <label className="label">Name</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Talos Network" />
+        <Field label="Name" htmlFor="set-name">
+          <Input
+            id="set-name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </Field>
+        <Textarea
+          aria-label="Set description"
+          placeholder="Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <Select
+          ariaLabel="Distribution mode"
+          value={mode}
+          onValueChange={setMode}
+          options={[
+            { value: "EXACT", label: "Exact — same text everywhere" },
+            { value: "CTA_PER_CHANNEL", label: "CTA per channel" },
+            { value: "CONTACT_PER_CHANNEL", label: "Contact per channel" },
+          ]}
+        />
+        <div className="max-h-60 overflow-auto space-y-2">
+          {channels.data?.map((c) => (
+            <label className="flex gap-2 items-center text-sm" key={c.id}>
+              <Checkbox
+                label={c.title}
+                checked={selected.includes(c.id)}
+                onCheckedChange={(v) =>
+                  setSelected(
+                    v
+                      ? [...selected, c.id]
+                      : selected.filter((x) => x !== c.id),
+                  )
+                }
+              />
+              {c.title}
+              <span className="text-ink-faint">{c.health}</span>
+            </label>
+          ))}
         </div>
-        <div>
-          <label className="label">Distribution mode</label>
-          <Select value={mode} onValueChange={setMode} options={MODE_OPTIONS} />
-        </div>
-        <div>
-          <label className="label">Channels ({selected.size} selected)</label>
-          <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-surface-border p-2">
-            {channels.data?.map((c) => (
-              <label key={c.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-overlay">
-                <input
-                  type="checkbox"
-                  checked={selected.has(c.id)}
-                  onChange={(e) => {
-                    const next = new Set(selected);
-                    if (e.target.checked) next.add(c.id);
-                    else next.delete(c.id);
-                    setSelected(next);
-                  }}
-                />
-                {c.title}
-              </label>
-            ))}
-          </div>
-        </div>
-        <button className="btn-primary w-full" disabled={create.isPending || selected.size === 0}>
-          Create channel set
-        </button>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!selected.length}
+          loading={action.isPending}
+        >
+          {set ? "Save channel set" : "Create channel set"}
+        </Button>
       </form>
     </Dialog>
-  );
-}
-
-export function ChannelSetsPage({ workspaceId }: { workspaceId: string }) {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const channelSets = useQuery({ queryKey: ["channel-sets", workspaceId], queryFn: () => endpoints.channelSets(workspaceId) });
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Channel sets</h1>
-        <button className="btn-primary" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4" /> New channel set
-        </button>
-      </div>
-
-      <Card>
-        {channelSets.data && channelSets.data.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {channelSets.data.map((set) => (
-              <div key={set.id} className="rounded-lg border border-surface-border p-4">
-                <p className="text-sm font-medium text-ink">{set.name}</p>
-                <p className="text-xs text-ink-faint">{set.member_count} channels · {set.mode}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="No channel sets yet"
-            description="Create a channel set to publish one piece of content to many channels at once."
-            action={
-              <button className="btn-primary" onClick={() => setDialogOpen(true)}>
-                New channel set
-              </button>
-            }
-          />
-        )}
-      </Card>
-
-      <CreateChannelSetDialog workspaceId={workspaceId} open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
   );
 }
