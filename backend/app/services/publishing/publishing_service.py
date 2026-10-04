@@ -91,6 +91,11 @@ class PublishingService:
         image_bytes = await self._load_image(publication)
 
         provider = new_provider()
+        from app.services.telegram.fake_provider import FakeTelegramProvider
+
+        if isinstance(provider, FakeTelegramProvider):
+            batch = await self.session.get(DistributionBatch, publication.batch_id)
+            provider.workspace_id = batch.workspace_id
         try:
             try:
                 await provider.restore_session(decrypt_session_string(account.session_encrypted))

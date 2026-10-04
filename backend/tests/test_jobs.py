@@ -83,7 +83,7 @@ async def test_injected_failure_marks_job_failed_with_error_code(
 ):
     await db_session.commit()
     _, channels, _ = await _publishing_item(db_session, workspace)
-    await redis_client.sadd(FAIL_ENTITIES_KEY, str(channels[0].telegram_entity_id))
+    await redis_client.sadd(f"{FAIL_ENTITIES_KEY}:{workspace.id}", str(channels[0].telegram_entity_id))
     await scheduler.tick()
     async with session_factory() as s:
         failed = (await s.execute(select(Job).where(Job.status == JobStatus.FAILED))).scalars().all()

@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import {
   Outlet,
+  useLocation,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -44,6 +45,7 @@ function Protected({
 }: {
   children: (workspaceId: string) => ReactNode;
 }) {
+  const location = useLocation();
   const session = useSession();
   const workspaces = useWorkspaces();
   const { workspaceId } = useWorkspaceStore();
@@ -69,7 +71,11 @@ function Protected({
     );
   }
 
-  return <AppShell key={workspaceId}>{children(workspaceId)}</AppShell>;
+  return (
+    <AppShell key={workspaceId}>
+      <Fragment key={location.searchStr}>{children(workspaceId)}</Fragment>
+    </AppShell>
+  );
 }
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });

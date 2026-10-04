@@ -41,6 +41,7 @@ def _user_id_for(phone: str) -> int:
 
 class FakeTelegramProvider(TelegramProvider):
     def __init__(self) -> None:
+        self.workspace_id = None
         self._state: dict = {"phone": "", "authorized": False, "awaiting_password": False}
 
     def _profile(self) -> TelegramProfile:
@@ -107,7 +108,7 @@ class FakeTelegramProvider(TelegramProvider):
         from app.core.redis import get_redis
 
         try:
-            failing = await get_redis().sismember(FAIL_ENTITIES_KEY, str(entity_id))
+            failing = await get_redis().sismember(f"{FAIL_ENTITIES_KEY}:{self.workspace_id}", str(entity_id))
         except Exception:  # noqa: BLE001  (no Redis in some unit tests)
             failing = False
         if failing:

@@ -29,7 +29,9 @@ export function CommandPalette({
   });
   const go = (to: string) => {
     onOpenChange(false);
-    void navigate({ to });
+    void navigate({
+      to: to.includes("?") ? `${to}&action_id=${Date.now()}` : to,
+    });
   };
   const itemClass =
     "cursor-pointer rounded-md px-3 py-2 text-sm text-ink-muted data-[selected=true]:bg-surface-hover data-[selected=true]:text-ink";

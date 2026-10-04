@@ -99,6 +99,10 @@ class DistributionService:
         return batch
 
     async def recompute_batch_status(self, batch: DistributionBatch) -> BatchStatus:
+        # Serialize aggregate updates after flushing this channel's outcome.
+        # The last worker then sees every earlier committed result.
+        await self.session.flush()
+        await self.session.get(DistributionBatch, batch.id, with_for_update=True, populate_existing=True)
         result = await self.session.execute(
             select(Publication.status).where(Publication.batch_id == batch.id)
         )

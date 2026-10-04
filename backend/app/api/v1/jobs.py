@@ -89,7 +89,7 @@ def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
 
 
 async def _get_job(db: AsyncSession, workspace_id: uuid.UUID, job_id: uuid.UUID) -> Job:
-    job = await db.get(Job, job_id)
+    job = await db.get(Job, job_id, with_for_update=True)
     if job is None or job.workspace_id != workspace_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
     return job

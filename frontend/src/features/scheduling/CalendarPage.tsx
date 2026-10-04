@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { addDays, addMonths, format, isSameDay } from "date-fns";
 import { TZDate } from "@date-fns/tz";
-import { endpoints, type CalendarEntry } from "@/lib/api";
+import { endpoints, mediaUrl, type CalendarEntry } from "@/lib/api";
 import { calendarDays, moveToDay, type CalendarMode } from "@/lib/calendar";
 import {
   Button,
@@ -30,8 +30,10 @@ import { dateTime, timezoneOptions } from "@/lib/format";
 function Entry({
   entry,
   onClick,
+  workspaceId,
 }: {
   entry: CalendarEntry;
+  workspaceId: string;
   onClick: () => void;
 }) {
   const drag = useDraggable({
@@ -62,6 +64,16 @@ function Entry({
         </button>
       )}
       <button onClick={onClick} className="block w-full text-left">
+        {entry.media_asset_id && (
+          <img
+            loading="lazy"
+            alt="Post image"
+            className="mb-2 h-16 w-full rounded object-cover"
+            src={mediaUrl(
+              `/api/v1/workspaces/${workspaceId}/media/${entry.media_asset_id}/content`,
+            )}
+          />
+        )}
         <span className="line-clamp-2 font-medium">{entry.title}</span>
         <span className="block text-ink-muted mt-1">
           {entry.channel_set_name} · {entry.category}
@@ -77,9 +89,11 @@ function Day({
   tz,
   onSelect,
   onTime,
+  workspaceId,
 }: {
   day: Date;
   entries: CalendarEntry[];
+  workspaceId: string;
   tz: string;
   onSelect: (id: string) => void;
   onTime: (entry: CalendarEntry) => void;
@@ -95,7 +109,11 @@ function Day({
       <h2 className="text-xs text-ink-muted">{format(day, "EEE d")}</h2>
       {entries.map((e) => (
         <div key={e.id}>
-          <Entry entry={e} onClick={() => onSelect(e.id)} />
+          <Entry
+            workspaceId={workspaceId}
+            entry={e}
+            onClick={() => onSelect(e.id)}
+          />
           <div className="flex justify-between mt-1 text-2xs text-ink-faint">
             <span>{dateTime(e.at, tz, "HH:mm")}</span>
             {e.status === "SCHEDULED" && (
@@ -111,7 +129,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
   const client = useQueryClient(),
     [anchor, setAnchor] = useState(new Date()),
     [mode, setMode] = useState<CalendarMode>("month"),
-    [tz, setTz] = useState("Europe/Moscow"),
+    [tz, setTz] = useState(""),
     [target, setTarget] = useState("all"),
     [selected, setSelected] = useState<string | null>(null),
     [moving, setMoving] = useState<CalendarEntry | null>(null),
@@ -242,6 +260,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
           >
             {days.map((day) => (
               <Day
+                workspaceId={ws}
                 key={day.toISOString()}
                 day={day}
                 tz={timezone}

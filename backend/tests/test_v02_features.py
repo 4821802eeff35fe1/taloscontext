@@ -589,7 +589,7 @@ async def test_full_publish_partial_failure_and_retry(client, redis_client):
     assert len(ok_before) == 3
     assert (await client.get(f"{base}/content/{item['id']}")).json()["status"] == "PARTIALLY_PUBLISHED"
 
-    await redis_client.delete(FAIL_ENTITIES_KEY)
+    await redis_client.delete(f"{FAIL_ENTITIES_KEY}:{ws}")
     retried = (await client.post(f"{base}/distributions/{batch['id']}/retry-failed")).json()
     assert retried["status"] == "SUCCESS"
     ok_after = {p["id"]: p["telegram_message_id"] for p in retried["publications"]}

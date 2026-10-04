@@ -83,6 +83,7 @@ class SeriesService:
         return n
 
     async def attach(self, series: ContentSeries, item: ContentItem) -> SeriesItem:
+        await self.session.get(ContentSeries, series.id, with_for_update=True)
         parts = await self._parts(series)
         alive = [(si, ci) for si, ci in parts if ci.status not in _DEAD]
         number = self._next_number(alive)

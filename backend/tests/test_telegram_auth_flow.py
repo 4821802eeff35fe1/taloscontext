@@ -161,3 +161,19 @@ async def test_api_flow_imports_channels_via_job(client, session_factory):
     await client.post(f"/api/v1/workspaces/{ws}/telegram/auth/{r.json()['flow_id']}/code", json={"code": "1"})
     accounts = (await client.get(f"/api/v1/workspaces/{ws}/telegram/accounts")).json()
     assert len(accounts) == 1 and accounts[0]["channel_count"] == 5
+
+
+async def test_fake_failure_controls_do_not_cross_workspaces(redis_client):
+    import uuid
+
+    from app.services.telegram.base import TelegramOperationError
+    from app.services.telegram.fake_provider import FAIL_ENTITIES_KEY, FakeTelegramProvider
+
+    a, b = FakeTelegramProvider(), FakeTelegramProvider()
+    a.workspace_id, b.workspace_id = uuid.uuid4(), uuid.uuid4()
+    await a.restore_session("FAKE_SESSION_STRING_+15551234567")
+    await b.restore_session("FAKE_SESSION_STRING_+15551234567")
+    await redis_client.sadd(f"{FAIL_ENTITIES_KEY}:{a.workspace_id}", "1001")
+    with pytest.raises(TelegramOperationError):
+        await a.send_message(entity_id=1001, access_hash=None, html="test", image_bytes=None)
+    assert (await b.send_message(entity_id=1001, access_hash=None, html="test", image_bytes=None)).telegram_message_id

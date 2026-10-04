@@ -133,7 +133,7 @@ test.describe.serial("daily product flow with fake providers", () => {
       page.request,
       `/workspaces/${ws}/channel-sets/${sets[0].id}`,
     );
-    // Fake channel entity ids use 1000..1004, see fake provider.
+    // Fake channel entity ids use 1001..1005, see fake provider.
     const control = await page.request.put(
       apiBase + `/api/v1/workspaces/${ws}/dev/fake-telegram/failures`,
       { headers, data: { entity_ids: [1002] } },
@@ -332,10 +332,18 @@ test.describe.serial("daily product flow with fake providers", () => {
     await expect(
       page.getByRole("heading", { name: "Calendar", exact: true }),
     ).toBeVisible();
+    await page.screenshot({
+      path: "test-results/ux-calendar-desktop.png",
+      fullPage: true,
+    });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(
       page.getByRole("button", { name: "Open navigation" }),
     ).toBeVisible();
+    await page.screenshot({
+      path: "test-results/ux-calendar-mobile.png",
+      fullPage: true,
+    });
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

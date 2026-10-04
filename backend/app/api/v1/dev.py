@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.deps import get_workspace_member
+from app.core.rbac import CAN_MANAGE_TELEGRAM, require_role
 from app.core.redis import get_redis
 from app.models.identity import WorkspaceMember
 from app.services.telegram.fake_provider import FAIL_ENTITIES_KEY
@@ -26,8 +27,10 @@ class FailuresRequest(BaseModel):
 async def set_fake_failures(
     workspace_id: uuid.UUID, payload: FailuresRequest, member: WorkspaceMember = Depends(get_workspace_member)
 ):
+    require_role(member.role, CAN_MANAGE_TELEGRAM)
     redis = get_redis()
-    await redis.delete(FAIL_ENTITIES_KEY)
+    key = f"{FAIL_ENTITIES_KEY}:{workspace_id}"
+    await redis.delete(key)
     if payload.entity_ids:
-        await redis.sadd(FAIL_ENTITIES_KEY, *[str(e) for e in payload.entity_ids])
+        await redis.sadd(key, *[str(e) for e in payload.entity_ids])
     return {"failing_entity_ids": payload.entity_ids}

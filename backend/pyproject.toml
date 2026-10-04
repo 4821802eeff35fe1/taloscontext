@@ -7,7 +7,7 @@ packages = ["app"]
 
 [project]
 name = "channelos-backend"
-version = "0.1.0"
+version = "0.2.0"
 description = "ChannelOS backend — Telegram Content Operating System"
 requires-python = ">=3.12"
 dependencies = [

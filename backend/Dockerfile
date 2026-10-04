@@ -10,11 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-COPY app ./app
-RUN pip install --upgrade pip && pip install -e ".[dev]"
+COPY requirements.lock ./
+RUN pip install -r requirements.lock
 
 COPY . .
+RUN pip install --no-deps . && useradd --create-home --uid 10001 channelos
+USER channelos
 
 EXPOSE 8000
 

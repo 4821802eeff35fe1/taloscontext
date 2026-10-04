@@ -160,6 +160,11 @@ class AIService:
                 user_prompt + "\n\nYour previous response was not valid JSON matching the "
                 "required schema. Return ONLY the corrected JSON object."
             )
+            if attempt:
+                await self.cost_service.assert_ai_allowed(
+                    workspace_id,
+                    self.cost_service.estimate_text_cost(len(system_prompt) + len(prompt), max_tokens),
+                )
             try:
                 completion = await self.text_provider.complete(
                     system_prompt=system_prompt, user_prompt=prompt, max_tokens=max_tokens

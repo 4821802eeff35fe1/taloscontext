@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: channelos
       POSTGRES_DB: channelos
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,8 +17,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -26,14 +29,15 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    build:
+      context: ./infra/minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: channelos
       MINIO_ROOT_PASSWORD: channelos-secret
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -45,7 +49,7 @@ services:
   backend:
     build:
       context: ./backend
-    env_file: .env
+    env_file: ${CHANNEL_OS_ENV_FILE:-.env}
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,46 +58,48 @@ services:
       minio:
         condition: service_healthy
     ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
     command: >
       sh -c "alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
 
   worker:
     build:
       context: ./backend
-    env_file: .env
+    env_file: ${CHANNEL_OS_ENV_FILE:-.env}
     depends_on:
-      - backend
-    volumes:
-      - ./backend:/app
+      backend:
+        condition: service_healthy
     command: arq app.jobs.worker.WorkerSettings
 
   scheduler:
     build:
       context: ./backend
-    env_file: .env
+    env_file: ${CHANNEL_OS_ENV_FILE:-.env}
     depends_on:
-      - backend
-    volumes:
-      - ./backend:/app
+      backend:
+        condition: service_healthy
     command: python -m app.jobs.scheduler
 
   frontend:
     build:
       context: ./frontend
-    env_file: .env
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      args:
+        VITE_API_BASE_URL: ""
+    depends_on:
+      backend:
+        condition: service_healthy
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 3000
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:
   minio_data:

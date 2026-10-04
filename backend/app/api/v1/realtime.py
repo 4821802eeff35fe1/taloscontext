@@ -14,8 +14,9 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_workspace_member
+from app.api.deps import get_db, get_workspace_member
 from app.core.auth import session_is_valid
 from app.core.redis import get_redis
 from app.db.session import session_scope
@@ -70,8 +71,11 @@ async def event_stream(request: Request, workspace_id: uuid.UUID, *, max_idle_lo
 
 @router.get("/events")
 async def events(
-    workspace_id: uuid.UUID, request: Request, member: WorkspaceMember = Depends(get_workspace_member)
+    workspace_id: uuid.UUID, request: Request, member: WorkspaceMember = Depends(get_workspace_member),
+    db: AsyncSession = Depends(get_db),
 ):
+    # Authentication is complete; do not reserve a DB connection for an hours-long SSE stream.
+    await db.close()
     return StreamingResponse(
         event_stream(request, workspace_id, session_id=request.state.session_id),
         media_type="text/event-stream",

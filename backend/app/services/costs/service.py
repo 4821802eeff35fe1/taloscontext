@@ -101,7 +101,7 @@ class CostService:
         self.session.add(ai_request)
         await self.session.flush()
 
-        if status == AIRequestStatus.SUCCESS and total_cost > 0:
+        if total_cost > 0:
             self.session.add(
                 CostEvent(
                     workspace_id=workspace_id,
@@ -186,6 +186,11 @@ class CostService:
     async def assert_ai_allowed(self, workspace_id: uuid.UUID, estimated_cost: Decimal) -> None:
         """Daily/monthly caps apply to every AI operation, manual or automatic.
         Publishing already-approved content is never gated by this."""
+        # Hold the workspace row through the AI call and cost commit so concurrent
+        # workers cannot all pass the same budget check before any spend is recorded.
+        from app.models.identity import Workspace
+
+        await self.session.get(Workspace, workspace_id, with_for_update=True)
         config = await self.budget_config(workspace_id)
         today = await self.today_spend(workspace_id)
         if today + estimated_cost > Decimal(config.daily_budget_rub):
@@ -201,6 +206,9 @@ class CostService:
                 "Raise the limit in Settings → Budget to continue.",
                 kind="monthly",
             )
+
+        if estimated_cost > Decimal(config.max_cost_per_post_rub):
+            raise BudgetExceededError("Estimated AI cost exceeds the maximum per post.", kind="post")
 
     async def check_budget_thresholds(self, workspace_id: uuid.UUID) -> None:
         """Raises warning/exceeded notifications once per period when a threshold is crossed."""

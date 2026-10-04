@@ -65,3 +65,15 @@ async def test_budget_guard_blocks_on_monthly_cap(db_session, workspace):
     with pytest.raises(BudgetExceededError) as exc_info:
         await service.assert_budget_available(workspace_id, config, Decimal(1))
     assert exc_info.value.kind == "monthly"
+
+
+async def test_invalid_ai_output_is_still_billed(db_session, workspace):
+    from app.models.enums import AIRequestStatus
+
+    service = CostService(db_session)
+    request = await service.record_ai_request(
+        workspace_id=workspace.id, content_item_id=None, provider="fake", model="fake",
+        operation=AIOperation.GENERATE_POST, prompt_tokens=1000, completion_tokens=1000,
+        latency_ms=1, is_image=False, status=AIRequestStatus.RETRIED,
+    )
+    assert await service.today_spend(workspace.id) == request.total_cost_rub
