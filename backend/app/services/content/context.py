@@ -211,16 +211,23 @@ class PromptContextBuilder:
         series = await self.session.get(ContentSeries, item.series_id)
         if series is None:
             return ""
-        from app.services.content.series_service import SeriesService
+        from app.models.content import SeriesItem
+        from app.services.content.series_service import SeriesService, label_for
 
         state = await SeriesService(self.session).progress(series)
+        own = (await self.session.execute(
+            select(SeriesItem.sequence_number).where(SeriesItem.content_item_id == item.id)
+        )).scalar_one_or_none()
+        label = label_for(series, own) if own else state["next_label"]
         published = "\n".join(f"- {p['label']} {p['title']}" for p in state["items"]) or "- (none yet)"
-        planned = "\n".join(f"- {t}" for t in state["remaining_topics"][:10]) or "- (none planned)"
+        remaining = [t for t in state["remaining_topics"] if t.lower() != (item.topic or "").lower()]
+        planned = "\n".join(f"- {t}" for t in remaining[:10]) or "- (none planned)"
+        topic_line = f"This part's topic: {item.topic}\n" if item.topic else ""
         return (
-            f"This post is part {state['next_label']} of the series “{series.title}”.\n"
+            f"This post is part {label} of the series “{series.title}”.\n{topic_line}"
             f"Series description: {series.description or '—'}\n"
             f"Already published parts (do NOT repeat their angle or content):\n{published}\n"
-            f"Planned upcoming topics (this part covers the first unless told otherwise):\n{planned}"
+            f"Later planned topics (leave them for future parts):\n{planned}"
         )
 
     async def build(self, item: ContentItem, instruction: str) -> PromptContext:

@@ -94,13 +94,13 @@ class IdeaUpdateRequest(BaseModel):
 def _validate_config(kind: str, config: SourceConfig) -> None:
     if kind in ("rss", "url", "manual"):
         if not config.url:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "This source needs a URL.")
+            raise HTTPException(422, "This source needs a URL.")
         try:
             assert_url_is_safe(config.url)
         except SSRFBlockedError as exc:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"URL not allowed: {exc}") from exc
+            raise HTTPException(422, f"URL not allowed: {exc}") from exc
     if kind == "telegram" and not (config.channel and config.account_id):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Pick a channel username and a connected account.")
+        raise HTTPException(422, "Pick a channel username and a connected account.")
 
 
 async def _source_or_404(db: AsyncSession, workspace_id: uuid.UUID, source_id: uuid.UUID) -> Source:

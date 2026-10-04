@@ -192,3 +192,41 @@ async def transform_handler(session: AsyncSession, job: Job, payload: dict[str, 
     from app.services.content.transforms import run_transform
 
     return await run_transform(session, job, payload, emit)
+
+
+@register_handler(JobType.AI_GENERATE_IMAGE)
+async def image_handler(session: AsyncSession, job: Job, payload: dict[str, Any], emit: Emit) -> dict[str, Any]:
+    from decimal import Decimal
+
+    from app.models.content import ContentItem
+    from app.models.media import MediaGeneration
+    from app.services.ai.factory import get_image_provider, get_text_provider
+    from app.services.ai.service import AIService
+    from app.services.costs.service import BudgetExceededError
+    from app.services.media.service import MediaService
+    from app.services.media.storage import MediaStorage
+
+    content_id = uuid.UUID(payload["content_id"]) if payload.get("content_id") else None
+    ai = AIService(session, get_text_provider(), get_image_provider())
+    try:
+        result, ai_request = await ai.generate_image(
+            workspace_id=job.workspace_id, content_item_id=content_id, prompt=payload["prompt"]
+        )
+    except BudgetExceededError as exc:
+        raise JobFailed("BUDGET_EXCEEDED", str(exc)) from exc
+    except RuntimeError as exc:  # provider unavailable
+        raise JobFailed("IMAGE_PROVIDER_UNAVAILABLE", str(exc)) from exc
+    asset = await MediaService(session, MediaStorage()).store_generated(
+        workspace_id=job.workspace_id, data=result.image_bytes, mime_type=result.mime_type
+    )
+    session.add(MediaGeneration(
+        media_asset_id=asset.id, content_item_id=content_id, provider=result.provider, model=result.model,
+        prompt=payload["prompt"], cost_total_rub=Decimal(ai_request.total_cost_rub), ai_request_id=ai_request.id,
+    ))
+    if content_id:
+        item = await session.get(ContentItem, content_id)
+        if item is not None and item.workspace_id == job.workspace_id:
+            item.media_asset_id = asset.id
+            emit("content.updated", {"content_id": str(item.id)})
+    emit("media.created", {"media_id": str(asset.id)})
+    return {"media_id": str(asset.id), "cost_rub": str(ai_request.total_cost_rub)}

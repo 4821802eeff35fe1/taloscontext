@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,6 +75,23 @@ async def update_autopilot(
     require_role(member.role, CAN_MANAGE_SETTINGS)
     config = await _get_or_create(db, workspace_id)
     updates = payload.model_dump(exclude_unset=True)
+    if updates.get("channel_set_id"):
+        from app.models.telegram import ChannelSet
+
+        cs = await db.get(ChannelSet, updates["channel_set_id"])
+        if cs is None or cs.workspace_id != workspace_id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Channel set not found")
+    if updates.get("schedule_id"):
+        from app.models.scheduling import Schedule
+
+        sc = await db.get(Schedule, updates["schedule_id"])
+        if sc is None or sc.workspace_id != workspace_id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Schedule not found")
+    from app.services.audit.service import AuditService
+
+    await AuditService(db).record(workspace_id=workspace_id, actor_user_id=member.user_id, action="autopilot.updated",
+                                  entity_type="workspace", entity_id=workspace_id,
+                                  metadata={k: str(v) for k, v in updates.items()})
     if "mode" in updates:
         updates["mode"] = AutopilotMode(updates["mode"])
     for field, value in updates.items():

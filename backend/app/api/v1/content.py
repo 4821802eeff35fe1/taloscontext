@@ -309,6 +309,13 @@ async def _full(db: AsyncSession, item: ContentItem) -> ContentResponse:
     )
 
 
+def _aware(dt: datetime | None) -> datetime | None:
+    """SQLite hands back naive datetimes; everything here is UTC."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
 def _encode_cursor(stamp: datetime, item_id: uuid.UUID) -> str:
     return base64.urlsafe_b64encode(f"{stamp.isoformat()}|{item_id}".encode()).decode()
 
@@ -439,6 +446,7 @@ async def calendar(
     member: WorkspaceMember = Depends(get_workspace_member),
     db: AsyncSession = Depends(get_db),
 ):
+    start, end = _aware(start), _aware(end)
     if end <= start or end - start > timedelta(days=62):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Calendar range must be positive and at most 62 days")
     stmt = select(ContentItem).where(
@@ -456,7 +464,7 @@ async def calendar(
     entries = []
     for i in items:
         published = i.status in (ContentStatus.PUBLISHED, ContentStatus.PARTIALLY_PUBLISHED) and i.published_at
-        at = i.published_at if published else i.scheduled_at
+        at = _aware(i.published_at if published else i.scheduled_at)
         if at is None:
             continue
         entries.append(CalendarEntry(
@@ -662,11 +670,11 @@ async def transform(
     require_role(member.role, CAN_EDIT_CONTENT)
     item = await _get_or_404(db, workspace_id, content_id)
     if payload.operation not in OPERATIONS:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown operation {payload.operation!r}")
+        raise HTTPException(422, f"Unknown operation {payload.operation!r}")
     if item.status not in EDITABLE_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, f"Content is {item.status.value.lower()} and can't be edited")
     if OPERATIONS[payload.operation][2] and not payload.selection.strip():
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Select the fragment to regenerate first.")
+        raise HTTPException(422, "Select the fragment to regenerate first.")
     await _check_refs(db, workspace_id, tone_profile_id=payload.tone_profile_id)
     jobs = JobService(db)
     active = await jobs.active_for_entity("content", item.id)
@@ -893,7 +901,7 @@ async def schedule_content(
     else:
         at = payload.scheduled_at if payload.scheduled_at.tzinfo else payload.scheduled_at.replace(tzinfo=UTC)
         if at < now - timedelta(minutes=1):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Pick a time in the future.")
+            raise HTTPException(422, "Pick a time in the future.")
     await _transition(_content_service(db).schedule_only_status, item)
     await _apply_schedule(db, workspace_id, item, at)
     await _audit(db, workspace_id, user, "content.scheduled", item, scheduled_at=at.isoformat())
@@ -915,7 +923,7 @@ async def reschedule_content(
         raise HTTPException(status.HTTP_409_CONFLICT, "Only scheduled posts can be moved.")
     at = payload.scheduled_at if payload.scheduled_at.tzinfo else payload.scheduled_at.replace(tzinfo=UTC)
     if at < datetime.now(UTC) - timedelta(minutes=1):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Can't move a post into the past.")
+        raise HTTPException(422, "Can't move a post into the past.")
     previous = item.scheduled_at
     item.scheduled_at = at
     await _audit(db, workspace_id, user, "content.rescheduled", item,

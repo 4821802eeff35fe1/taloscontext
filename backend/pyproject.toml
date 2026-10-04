@@ -58,3 +58,6 @@ testpaths = ["tests"]
 
 [tool.ruff.lint]
 ignore = ["B008"]  # FastAPI's Depends(...) default-argument pattern is intentional
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["RUF059"]  # unpacking fixtures for readability is fine in tests

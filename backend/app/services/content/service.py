@@ -160,8 +160,10 @@ class ContentService:
     def _apply_generation_result(
         self, item: ContentItem, result: GenerationResult, candidates: list[DuplicateCandidate]
     ) -> None:
-        item.topic = result.topic
-        item.category = result.category
+        # A topic chosen up front (series plan, idea, user) is kept: the series
+        # tracks which planned topics are used by it.
+        item.topic = item.topic or result.topic
+        item.category = item.category or result.category
         item.angle = result.angle
         item.title = result.title
         item.telegram_html = sanitize_telegram_html(result.telegram_html)
