@@ -12,4 +12,6 @@
 - Responsive UI primitives, Vitest/RTL and Playwright acceptance scenarios.
 - Static Nginx frontend, two-process API, persisted Redis AOF, pinned Python dependencies, non-root backend and source-built reference MinIO. Proxy re-resolves backend DNS after container restarts.
 
+- First-run fixes found by re-running the documented quick start: blank numeric variables (e.g. `TELEGRAM_API_ID=` from a v0.1 `.env`) no longer crash-loop the API; `.env.example` ships `dev-only-` key placeholders (refused when `APP_ENV=production`), so adding a fake Telegram account works right after `cp .env.example .env`; a missing session-encryption key returns a clear 503 instead of an opaque 500.
+
 See AUDIT.md for verification evidence, live verification gaps and known limits. Existing backend architecture and one-generation fan-out were retained.

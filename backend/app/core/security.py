@@ -28,11 +28,16 @@ def verify_password(raw_password: str, hashed: str) -> bool:
         return False
 
 
+class EncryptionKeyMissingError(RuntimeError):
+    """Raised instead of handling Telegram secrets without an encryption key."""
+
+
 def _fernet() -> Fernet:
     key = get_settings().telethon_session_encryption_key
     if not key:
-        raise RuntimeError(
-            "TELETHON_SESSION_ENCRYPTION_KEY is not set — refusing to handle Telegram sessions"
+        raise EncryptionKeyMissingError(
+            "Telegram session encryption is not configured: set TELETHON_SESSION_ENCRYPTION_KEY "
+            "in .env and restart the API, worker and scheduler."
         )
     # Accept either a raw passphrase or an already-valid Fernet key.
     digest = hashlib.sha256(key.encode("utf-8")).digest()

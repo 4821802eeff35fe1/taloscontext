@@ -1,12 +1,32 @@
 from decimal import Decimal
 from functools import lru_cache
+from typing import Any
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Values shipped in .env.example so the fake-provider quick start works.
+# Refused in production.
+DEV_PLACEHOLDER_PREFIX = "dev-only-"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _blank_means_unset(cls, data: Any) -> Any:
+        """`TELEGRAM_API_ID=` (blank, as in v0.1's .env.example) means "not set",
+        not "invalid integer" — otherwise an upgraded .env crash-loops the API."""
+        if not isinstance(data, dict):
+            return data
+        for name, field in cls.model_fields.items():
+            if field.annotation is str:
+                continue
+            for key in (name, field.alias):
+                if key and isinstance(data.get(key), str) and not data[key].strip():
+                    data.pop(key)
+        return data
 
     app_env: str = Field(default="development", alias="APP_ENV")
     app_secret_key: str = Field(default="", alias="APP_SECRET_KEY")
@@ -81,12 +101,19 @@ class Settings(BaseSettings):
         return self.app_env == "production"
 
     def validate_production(self) -> None:
-        if self.is_production and not self.app_secret_key:
-            raise RuntimeError("APP_SECRET_KEY must be set when APP_ENV=production")
-        if self.is_production and not self.telethon_session_encryption_key:
-            raise RuntimeError(
-                "TELETHON_SESSION_ENCRYPTION_KEY must be set when APP_ENV=production"
-            )
+        if not self.is_production:
+            return
+        for env_name, value in (
+            ("APP_SECRET_KEY", self.app_secret_key),
+            ("TELETHON_SESSION_ENCRYPTION_KEY", self.telethon_session_encryption_key),
+        ):
+            if not value:
+                raise RuntimeError(f"{env_name} must be set when APP_ENV=production")
+            if value.startswith(DEV_PLACEHOLDER_PREFIX):
+                raise RuntimeError(
+                    f"{env_name} still has the .env.example development placeholder; "
+                    "generate a real secret before running with APP_ENV=production"
+                )
 
 
 @lru_cache

@@ -61,3 +61,13 @@ Release checks on 2026-10-05 (Europe/Moscow):
 - Loaded calendar desktop and 390 px mobile screenshots were inspected; mobile has no horizontal page overflow. This is a focused visual review, not a claim of exhaustive accessibility testing.
 
 See TESTING.md and scripts/verify_compose.py for repeatable commands. All external providers were fake; MinIO, PostgreSQL, Redis, Nginx, backend processes, worker and scheduler were real containers.
+
+
+## Re-verification of the documented quick start (2026-10-05)
+
+The stack was rebuilt from the release commit and started with an env file copied verbatim from `.env.example`, as README instructs. This exposed two first-run defects, both fixed with regression tests:
+
+- A blank numeric variable (`TELEGRAM_API_ID=`, as in the v0.1 template) made settings validation fail, so an upgraded `.env` crash-looped the backend container. Blank values now mean "unset".
+- `.env.example` left `TELETHON_SESSION_ENCRYPTION_KEY` empty, so the first "Add Telegram account" (even with the fake provider) returned HTTP 500. The template now has `dev-only-` placeholders, production startup rejects them, and a missing key yields a 503 that names the variable.
+
+After the fixes, on the rebuilt seven-container stack: backend 120 tests (SQLite) and the same suite on PostgreSQL 16 + Redis 7, Alembic upgrade/downgrade/upgrade + `alembic check`, frontend typecheck, 25 Vitest tests, production build, `docker compose config`, Playwright 8/8 against Nginx + API + worker + scheduler, and `scripts/verify_compose.py` (restart acceptance) — all passed. External providers remained fake; nothing here is a live Telegram or Timeweb verification.

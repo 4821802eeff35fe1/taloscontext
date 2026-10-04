@@ -11,7 +11,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Open http://localhost:3000 and create a workspace. The example enables fake Telegram, text and image providers; it makes no paid AI calls or real Telegram sends. Set persistent `APP_SECRET_KEY` and `TELETHON_SESSION_ENCRYPTION_KEY` before using real accounts. Generate them with:
+Open http://localhost:3000 and create a workspace. The example enables fake Telegram, text and image providers; it makes no paid AI calls or real Telegram sends. `.env.example` ships `dev-only-…` placeholders for `APP_SECRET_KEY` and `TELETHON_SESSION_ENCRYPTION_KEY` so this works immediately; the API refuses to start with them when `APP_ENV=production`. Replace both with persistent secrets before connecting real accounts (changing the encryption key later makes stored Telegram sessions unreadable). Generate them with:
 
 ```bash
 python -c 'import secrets; print(secrets.token_urlsafe(48))'

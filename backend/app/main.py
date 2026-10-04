@@ -12,6 +12,7 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.core.rbac import PermissionDeniedError
+from app.core.security import EncryptionKeyMissingError
 from app.services.content.service import InvalidTransitionError
 from app.services.costs.service import BudgetExceededError
 from app.services.security.rate_limit import RateLimitExceeded
@@ -78,6 +79,11 @@ async def invalid_transition_handler(request: Request, exc: InvalidTransitionErr
 @app.exception_handler(BudgetExceededError)
 async def budget_exceeded_handler(request: Request, exc: BudgetExceededError):
     return JSONResponse(status_code=402, content={"detail": str(exc), "kind": exc.kind})
+
+
+@app.exception_handler(EncryptionKeyMissingError)
+async def encryption_key_missing_handler(request: Request, exc: EncryptionKeyMissingError):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
 @app.exception_handler(RateLimitExceeded)
