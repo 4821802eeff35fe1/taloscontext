@@ -1,0 +1,17 @@
+.env
+*.db
+__pycache__/
+*.pyc
+.venv/
+backend/.venv/
+node_modules/
+frontend/dist/
+.DS_Store
+*.log
+alembic_test.db
+smoke.db
+*.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/
+.pytest_cache/
+.ruff_cache/
