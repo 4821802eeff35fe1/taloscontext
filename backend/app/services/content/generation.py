@@ -52,7 +52,8 @@ async def run_generation(session: AsyncSession, job: Job, payload: dict[str, Any
         item.status = ContentStatus.FAILED
         await notifier.notify(
             workspace_id=item.workspace_id, kind="ai.failed",
-            message=f"AI generation failed: {exc}", metadata={"content_id": str(item.id), "job_id": str(job.id)},
+            message=f"AI generation failed: {exc}", metadata={"content_id": str(item.id), "job_id": str(job.id),
+                      "error_code": "AI_INVALID_RESPONSE" if isinstance(exc, AIParseError) else "AI_PROVIDER_ERROR"},
             emit=emit,
         )
         code = "AI_INVALID_RESPONSE" if isinstance(exc, AIParseError) else "AI_PROVIDER_ERROR"

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_MANAGE_MEMBERS, require_role
 from app.models.enums import WorkspaceRole
 from app.models.identity import User, Workspace, WorkspaceMember
@@ -73,11 +74,11 @@ async def add_member(workspace_id: uuid.UUID, payload: MemberIn, member: Workspa
     require_role(member.role, CAN_MANAGE_MEMBERS)
     target = (await db.execute(select(User).where(User.email == payload.email.lower()))).scalar_one_or_none()
     if target is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No ChannelOS user with this e-mail. Ask them to sign up first.")
+        raise ApiError(404, "MEMBER_USER_NOT_FOUND", "No ChannelOS user with this e-mail. Ask them to sign up first.")
     exists = (await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == target.id))).scalar_one_or_none()
     if exists:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Already a member")
+        raise ApiError(409, "MEMBER_ALREADY_EXISTS", "Already a member")
     db.add(WorkspaceMember(workspace_id=workspace_id, user_id=target.id, role=payload.role))
     await AuditService(db).record(workspace_id=workspace_id, actor_user_id=user.id, action="member.added",
                                   entity_type="user", entity_id=target.id, metadata={"role": payload.role.value})
@@ -93,12 +94,12 @@ async def change_role(workspace_id: uuid.UUID, user_id: uuid.UUID, payload: Role
     target = (await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == user_id))).scalar_one_or_none()
     if target is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
+        raise ApiError(404, "MEMBER_NOT_FOUND", "Member not found")
     if target.role == WorkspaceRole.OWNER and payload.role != WorkspaceRole.OWNER:
         owners = (await db.execute(select(WorkspaceMember).where(
             WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.role == WorkspaceRole.OWNER))).scalars().all()
         if len(owners) <= 1:
-            raise HTTPException(status.HTTP_409_CONFLICT, "A workspace needs at least one owner.")
+            raise ApiError(409, "WORKSPACE_LAST_OWNER", "A workspace needs at least one owner.")
     before = target.role.value
     target.role = payload.role
     await AuditService(db).record(workspace_id=workspace_id, actor_user_id=user.id, action="member.role_changed",

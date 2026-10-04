@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, get_db, get_workspace_member
 from app.core.auth import IDLE_TIMEOUT, session_max_age
 from app.core.config import get_settings
+from app.core.errors import ApiError
 from app.core.rbac import CAN_MANAGE_SETTINGS, require_role
 from app.jobs.scheduler import MISFIRE_POLICIES
 from app.models.identity import User, Workspace, WorkspaceMember
@@ -161,9 +162,8 @@ async def update_general(workspace_id: uuid.UUID, payload: GeneralIn,
     try:
         validate_timezone(payload.timezone)
     except ScheduleValidationError as exc:
-        from fastapi import HTTPException
 
-        raise HTTPException(422, str(exc)) from exc
+        raise ApiError(422, "TIMEZONE_INVALID", str(exc)) from exc
     ws = await db.get(Workspace, workspace_id)
     row = await get_workspace_settings(db, workspace_id)
     ws.name = payload.workspace_name

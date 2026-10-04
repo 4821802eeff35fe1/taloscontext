@@ -136,7 +136,10 @@ class NotificationService:
         }[batch.status]
         await self.notify(
             workspace_id=batch.workspace_id, kind=kind, message=message,
-            metadata={"content_id": str(batch.content_item_id), "batch_id": str(batch.id)},
+            # Parameters let clients render the message in the viewer's language;
+            # `message` stays as an English fallback.
+            metadata={"content_id": str(batch.content_item_id), "batch_id": str(batch.id), "title": title,
+                      "published": ok, "total": len(statuses), "failed": len(statuses) - ok},
             # Each retry round can end in a new final state; key on it so a later success still notifies.
             dedupe_key=f"batch:{batch.id}:{batch.status.value}:{ok}", dedupe_window=timedelta(days=30),
             emit=emit,
@@ -150,7 +153,7 @@ class NotificationService:
             workspace_id=account.workspace_id, kind="telegram.flood_wait",
             message=f"Telegram asked account {account.phone_masked} to slow down; "
                     f"publishing resumes at {retry_at.strftime('%H:%M UTC')}.",
-            metadata={"account_id": str(account.id), "retry_at": retry_at.isoformat()},
+            metadata={"account_id": str(account.id), "retry_at": retry_at.isoformat(), "phone": account.phone_masked},
             dedupe_key=f"flood:{account.id}", dedupe_window=timedelta(minutes=30), emit=emit,
         )
 
@@ -158,6 +161,6 @@ class NotificationService:
         await self.notify(
             workspace_id=account.workspace_id, kind="telegram.disconnected",
             message=f"Telegram account {account.phone_masked} needs to be reconnected.",
-            metadata={"account_id": str(account.id)}, min_role=WorkspaceRole.ADMIN,
+            metadata={"account_id": str(account.id), "phone": account.phone_masked}, min_role=WorkspaceRole.ADMIN,
             dedupe_key=f"disconnected:{account.id}", dedupe_window=timedelta(hours=12), emit=emit,
         )

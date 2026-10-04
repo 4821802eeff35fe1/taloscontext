@@ -125,7 +125,7 @@ async def handle_misfires(session, now: datetime) -> list[tuple[ContentItem, str
             workspace_id=workspace_id, kind="schedule.misfired",
             message=f"{len(items)} scheduled post(s) were missed while the scheduler was offline and have been "
                     f"handled by the misfire policy. Review them in the calendar.",
-            metadata={"content_ids": [str(i.id) for i in items]},
+            metadata={"content_ids": [str(i.id) for i in items], "count": len(items)},
         )
     return handled
 

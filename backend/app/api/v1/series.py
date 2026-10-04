@@ -4,12 +4,13 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_EDIT_CONTENT, require_role
 from app.models.content import ContentSeries
 from app.models.identity import User, WorkspaceMember
@@ -95,7 +96,7 @@ async def _check_refs(db, workspace_id, payload: SeriesIn) -> None:
         if value is not None:
             obj = await db.get(model, value)
             if obj is None or obj.workspace_id != workspace_id:
-                raise HTTPException(status.HTTP_404_NOT_FOUND, f"{label} not found")
+                raise ApiError(404, "REFERENCE_NOT_FOUND", f"{label} not found", entity=label)
 
 
 def _apply(s: ContentSeries, p: SeriesIn) -> None:
@@ -108,7 +109,7 @@ def _apply(s: ContentSeries, p: SeriesIn) -> None:
 async def _get(db, workspace_id, series_id) -> ContentSeries:
     s = await SeriesService(db).get_for_workspace(workspace_id, series_id)
     if s is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Series not found")
+        raise ApiError(404, "SERIES_NOT_FOUND", "Series not found")
     return s
 
 

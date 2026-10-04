@@ -48,9 +48,10 @@ class AuthFlowState(str, Enum):
 
 
 class AuthFlowError(Exception):
-    def __init__(self, message: str, status_code: int = 400):
+    def __init__(self, message: str, status_code: int = 400, code: str = "TELEGRAM_FLOW_INVALID"):
         super().__init__(message)
         self.status_code = status_code
+        self.code = code
 
 
 def _key(flow_id: str) -> str:
@@ -68,6 +69,8 @@ def public_view(flow: dict[str, Any]) -> dict[str, Any]:
         "phone_masked": flow["phone_masked"],
         "expires_at": flow["expires_at"],
         "error": flow.get("error"),
+        "error_code": flow.get("error_code"),
+        "wait_seconds": flow.get("wait_seconds"),
         "account_id": flow.get("result_account_id"),
         "attempts_left": (
             MAX_PASSWORD_ATTEMPTS - flow.get("password_attempts", 0)
@@ -90,11 +93,11 @@ class TelegramAuthFlowService:
     async def get(self, *, workspace_id: uuid.UUID, flow_id: str) -> dict[str, Any]:
         raw = await self.redis.get(_key(flow_id))
         if raw is None:
-            raise AuthFlowError("Login session not found or expired. Start again.", 404)
+            raise AuthFlowError("Login session not found or expired. Start again.", 404, "TELEGRAM_FLOW_NOT_FOUND")
         flow = json.loads(raw)
         if flow["workspace_id"] != str(workspace_id):
             # Same response as "missing" — don't confirm other tenants' flow ids.
-            raise AuthFlowError("Login session not found or expired. Start again.", 404)
+            raise AuthFlowError("Login session not found or expired. Start again.", 404, "TELEGRAM_FLOW_NOT_FOUND")
         if flow["state"] not in (AuthFlowState.COMPLETED, AuthFlowState.FAILED) and (
             datetime.fromisoformat(flow["expires_at"]) <= datetime.now(UTC)
         ):
@@ -113,11 +116,11 @@ class TelegramAuthFlowService:
     ) -> dict[str, Any]:
         phone = phone.strip().replace(" ", "")
         if not phone.startswith("+") or not phone[1:].isdigit() or not 8 <= len(phone) <= 16:
-            raise AuthFlowError("Enter the phone number in international format, e.g. +15551234567.")
+            raise AuthFlowError("Enter the phone number in international format, e.g. +15551234567.", 422, "TELEGRAM_PHONE_INVALID")
         if account_id is not None:
             account = await self.session.get(TelegramAccount, account_id)
             if account is None or account.workspace_id != workspace_id:
-                raise AuthFlowError("Telegram account not found", 404)
+                raise AuthFlowError("Telegram account not found", 404, "TELEGRAM_ACCOUNT_NOT_FOUND")
 
         now = datetime.now(UTC)
         flow: dict[str, Any] = {
@@ -144,6 +147,8 @@ class TelegramAuthFlowService:
         except TelegramOperationError as exc:
             flow["state"] = AuthFlowState.FAILED
             flow["error"] = str(exc)
+            flow["error_code"] = exc.code
+            flow["wait_seconds"] = exc.wait_seconds
         finally:
             await provider.disconnect()
         await self._save(flow)
@@ -167,12 +172,12 @@ class TelegramAuthFlowService:
         # One step at a time per flow, across all API processes.
         async with lease(self.redis, _lock_key(flow_id)) as acquired:
             if not acquired:
-                raise AuthFlowError("This login step is already being processed.", 409)
+                raise AuthFlowError("This login step is already being processed.", 409, "TELEGRAM_FLOW_BUSY")
             flow = await self.get(workspace_id=workspace_id, flow_id=flow_id)
             if flow["state"] == AuthFlowState.EXPIRED:
-                raise AuthFlowError("Login session expired. Start again to get a new code.", 410)
+                raise AuthFlowError("Login session expired. Start again to get a new code.", 410, "TELEGRAM_FLOW_EXPIRED")
             if flow["state"] != expected:
-                raise AuthFlowError(f"Login is in state {flow['state']}, expected {expected.value}.", 409)
+                raise AuthFlowError(f"Login is in state {flow['state']}, expected {expected.value}.", 409, "TELEGRAM_FLOW_STATE")
 
             flow["state"] = AuthFlowState.AUTHORIZING
             await self._save(flow)
@@ -194,7 +199,7 @@ class TelegramAuthFlowService:
             except LoginRequires2FA:
                 flow["session_encrypted"] = encrypt_session_string(await provider.export_session())
                 flow["state"] = AuthFlowState.PASSWORD_REQUIRED
-                flow["error"] = None
+                flow["error"] = flow["error_code"] = None
                 await self._save(flow)
                 return flow
             except TelegramOperationError as exc:
@@ -204,6 +209,8 @@ class TelegramAuthFlowService:
                     else (flow["password_attempts"], MAX_PASSWORD_ATTEMPTS)
                 )
                 flow["error"] = str(exc)
+                flow["error_code"] = exc.code
+                flow["wait_seconds"] = exc.wait_seconds
                 flow["state"] = AuthFlowState.FAILED if attempts >= limit else expected
                 await self._save(flow)
                 return flow
@@ -213,7 +220,7 @@ class TelegramAuthFlowService:
             account = await self._finalize(flow, profile, final_session)
             await self.session.commit()  # persist account before Redis declares completion
             flow["state"] = AuthFlowState.COMPLETED
-            flow["error"] = None
+            flow["error"] = flow["error_code"] = None
             flow["result_account_id"] = str(account.id)
             flow.pop("session_encrypted", None)
             flow.pop("phone_code_hash_encrypted", None)

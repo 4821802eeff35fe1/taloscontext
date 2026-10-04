@@ -3,8 +3,9 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import UTC, datetime
+from typing import Literal
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +20,7 @@ from app.core.auth import (
     sign_session_id,
 )
 from app.core.config import get_settings
+from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.core.security import hash_password, verify_password
 from app.models.enums import WorkspaceRole
@@ -34,11 +36,21 @@ log = get_logger(__name__)
 _DUMMY_HASH = hash_password("timing-equalizer-not-a-real-password")
 
 
+Language = Literal["ru", "en"]
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=256)
     full_name: str = Field(default="", max_length=200)
     workspace_name: str = Field(min_length=1, max_length=200)
+    # Language the visitor was using when they signed up (becomes their preference).
+    language: Language | None = None
+
+
+class PreferencesRequest(BaseModel):
+    language: Language | None = None
+    full_name: str | None = Field(default=None, max_length=200)
 
 
 class LoginRequest(BaseModel):
@@ -50,6 +62,12 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str
+    language: Language | None = None
+
+    @classmethod
+    def of(cls, user: User) -> UserResponse:
+        lang = user.language if user.language in ("ru", "en") else None
+        return cls(id=user.id, email=user.email, full_name=user.full_name, language=lang)
 
 
 class SessionResponse(BaseModel):
@@ -103,9 +121,10 @@ async def register(payload: RegisterRequest, request: Request, response: Respons
     existing = await db.execute(select(User).where(User.email == email))
     if existing.scalar_one_or_none():
         # Generic wording; registration is rate limited per IP to slow enumeration.
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unable to create an account with these details.")
+        raise ApiError(400, "AUTH_REGISTRATION_REJECTED", "Unable to create an account with these details.")
 
-    user = User(email=email, hashed_password=hash_password(payload.password), full_name=payload.full_name)
+    user = User(email=email, hashed_password=hash_password(payload.password), full_name=payload.full_name,
+                language=payload.language)
     db.add(user)
     await db.flush()
     workspace = Workspace(name=payload.workspace_name, slug=_slugify(payload.workspace_name))
@@ -118,7 +137,7 @@ async def register(payload: RegisterRequest, request: Request, response: Respons
     )
     await _start_session(db, request, response, user)
     await db.commit()
-    return UserResponse(id=user.id, email=user.email, full_name=user.full_name)
+    return UserResponse.of(user)
 
 
 @router.post("/login", response_model=UserResponse)
@@ -134,13 +153,13 @@ async def login(payload: LoginRequest, request: Request, response: Response, db:
             await _audit_for_user(db, user, "auth.login_failed", request)
             await db.commit()
         log.info("login_failed", known_account=bool(user))
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+        raise ApiError(401, "AUTH_INVALID_CREDENTIALS", "Invalid email or password")
 
     await rl.reset(rl.LOGIN_PER_ACCOUNT, email)
     await _start_session(db, request, response, user)
     await _audit_for_user(db, user, "auth.login", request)
     await db.commit()
-    return UserResponse(id=user.id, email=user.email, full_name=user.full_name)
+    return UserResponse.of(user)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -160,7 +179,20 @@ async def logout(
 
 @router.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(get_current_user)):
-    return UserResponse(id=user.id, email=user.email, full_name=user.full_name)
+    return UserResponse.of(user)
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(payload: PreferencesRequest, user: User = Depends(get_current_user),
+                    db: AsyncSession = Depends(get_db)):
+    """Per-user preferences. Only fields present in the request change."""
+    fields = payload.model_dump(exclude_unset=True)
+    if "language" in fields:
+        user.language = fields["language"]
+    if fields.get("full_name") is not None:
+        user.full_name = fields["full_name"]
+    await db.commit()
+    return UserResponse.of(user)
 
 
 @router.get("/sessions", response_model=list[SessionResponse])

@@ -5,12 +5,13 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_EDIT_CONTENT, require_role
 from app.models.enums import JobStatus, JobType
 from app.models.identity import User, WorkspaceMember
@@ -85,13 +86,13 @@ def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
         stamp, job_id = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
         return datetime.fromisoformat(stamp), uuid.UUID(job_id)
     except (ValueError, UnicodeDecodeError) as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid cursor") from exc
+        raise ApiError(400, "INVALID_CURSOR", "Invalid cursor") from exc
 
 
 async def _get_job(db: AsyncSession, workspace_id: uuid.UUID, job_id: uuid.UUID) -> Job:
     job = await db.get(Job, job_id, with_for_update=True)
     if job is None or job.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+        raise ApiError(404, "JOB_NOT_FOUND", "Job not found")
     return job
 
 
@@ -165,7 +166,7 @@ async def retry_job(
     try:
         await JobService(db).retry(job)
     except JobNotRetryableError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+        raise ApiError(409, "JOB_NOT_RETRYABLE", str(exc)) from exc
     await AuditService(db).record(
         workspace_id=workspace_id, actor_user_id=user.id, action="job.retried", entity_type="job",
         entity_id=job.id, metadata={"type": job.job_type.value},
@@ -187,7 +188,7 @@ async def cancel_job(
     try:
         await JobService(db).cancel(job)
     except JobNotRetryableError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+        raise ApiError(409, "JOB_NOT_CANCELLABLE", str(exc)) from exc
     await AuditService(db).record(
         workspace_id=workspace_id, actor_user_id=user.id, action="job.cancelled", entity_type="job", entity_id=job.id,
     )

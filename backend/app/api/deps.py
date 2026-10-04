@@ -4,7 +4,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
-from fastapi import Cookie, Depends, HTTPException, Request, status
+from fastapi import Cookie, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from app.core.auth import (
     read_session_id,
     session_is_valid,
 )
+from app.core.errors import ApiError
 from app.db.session import get_session
 from app.models.identity import User, UserSession, WorkspaceMember
 
@@ -28,12 +29,12 @@ async def get_current_session(
     db: AsyncSession = Depends(get_db),
 ) -> UserSession:
     if not session_token:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+        raise ApiError(401, "AUTH_REQUIRED", "Not signed in")
     session_id = read_session_id(session_token)
     row = await db.get(UserSession, session_id) if session_id else None
     now = datetime.now(UTC)
     if not session_is_valid(row, now):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired. Sign in again.")
+        raise ApiError(401, "AUTH_SESSION_EXPIRED", "Your session has expired. Sign in again.")
     last_seen = row.last_seen_at if row.last_seen_at.tzinfo else row.last_seen_at.replace(tzinfo=UTC)
     if now - last_seen > LAST_SEEN_RESOLUTION:
         row.last_seen_at = now
@@ -48,7 +49,7 @@ async def get_current_user(
 ) -> User:
     user = await db.get(User, session_row.user_id)
     if not user or not user.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This account is disabled.")
+        raise ApiError(401, "AUTH_ACCOUNT_DISABLED", "This account is disabled.")
     return user
 
 
@@ -65,5 +66,5 @@ async def get_workspace_member(
     member = result.scalar_one_or_none()
     if member is None:
         # 404, not 403: don't confirm that a workspace id exists to non-members.
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Workspace not found")
+        raise ApiError(404, "WORKSPACE_ACCESS_DENIED", "Workspace not found")
     return member

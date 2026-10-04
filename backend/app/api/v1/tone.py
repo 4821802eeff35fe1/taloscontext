@@ -4,12 +4,13 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_EDIT_CONTENT, CAN_MANAGE_SETTINGS, require_role
 from app.models.content import ContentSeries
 from app.models.identity import User, WorkspaceMember
@@ -71,7 +72,7 @@ async def _out(db: AsyncSession, p: ToneOfVoiceProfile, default_id: uuid.UUID | 
 async def _get(db, workspace_id, profile_id) -> ToneOfVoiceProfile:
     p = await db.get(ToneOfVoiceProfile, profile_id)
     if p is None or p.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tone profile not found")
+        raise ApiError(404, "TONE_PROFILE_NOT_FOUND", "Tone profile not found")
     return p
 
 

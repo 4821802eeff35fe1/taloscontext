@@ -4,12 +4,13 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_EDIT_CONTENT, require_role
 from app.models.identity import User, WorkspaceMember
 from app.models.knowledge import KnowledgeBase, KnowledgeChunk, KnowledgeDocument
@@ -97,21 +98,21 @@ class SearchHit(BaseModel):
 def _check_kind(kind: str) -> str:
     kind = kind.upper()
     if kind not in KNOWLEDGE_KINDS:
-        raise HTTPException(422, f"kind must be one of {', '.join(KNOWLEDGE_KINDS)}")
+        raise ApiError(422, "KNOWLEDGE_KIND_INVALID", f"kind must be one of {', '.join(KNOWLEDGE_KINDS)}", kind=kind)
     return kind
 
 
 async def _base_or_404(db, workspace_id, base_id) -> KnowledgeBase:
     kb = await db.get(KnowledgeBase, base_id)
     if kb is None or kb.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Knowledge base not found")
+        raise ApiError(404, "KNOWLEDGE_BASE_NOT_FOUND", "Knowledge base not found")
     return kb
 
 
 async def _doc_or_404(db, workspace_id, doc_id) -> KnowledgeDocument:
     doc = await db.get(KnowledgeDocument, doc_id)
     if doc is None or doc.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+        raise ApiError(404, "KNOWLEDGE_DOCUMENT_NOT_FOUND", "Document not found")
     return doc
 
 
@@ -229,7 +230,7 @@ async def upload_document(
             source_filename=filename, warnings=warnings,
         )
     except KnowledgeParseError as exc:
-        raise HTTPException(422, str(exc)) from exc
+        raise ApiError(422, "KNOWLEDGE_PARSE_ERROR", str(exc)) from exc
     await AuditService(db).record(workspace_id=workspace_id, actor_user_id=user.id, action="knowledge.uploaded",
                                   entity_type="knowledge_document", entity_id=doc.id,
                                   metadata={"file": filename, "kind": kind, "entries": len(entries)})

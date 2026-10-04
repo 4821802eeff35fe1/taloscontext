@@ -3,13 +3,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
 from app.api.v1.jobs import JobResponse
+from app.core.errors import ApiError
 from app.core.rbac import CAN_MANAGE_TELEGRAM, require_role
 from app.models.enums import JobType
 from app.models.identity import User, WorkspaceMember
@@ -57,6 +58,8 @@ class AuthFlowResponse(BaseModel):
     phone_masked: str
     expires_at: str
     error: str | None = None
+    error_code: str | None = None
+    wait_seconds: int | None = None
     account_id: str | None = None
     attempts_left: int
     refresh_job_id: uuid.UUID | None = None
@@ -101,7 +104,7 @@ async def _flow_response(
 
 
 def _raise(exc: AuthFlowError) -> None:
-    raise HTTPException(exc.status_code, str(exc)) from exc
+    raise ApiError(exc.status_code, exc.code, str(exc)) from exc
 
 
 @router.get("/accounts", response_model=list[AccountResponse])
@@ -190,7 +193,7 @@ async def submit_password(
 async def _account_or_404(db: AsyncSession, workspace_id: uuid.UUID, account_id: uuid.UUID) -> TelegramAccount:
     account = await db.get(TelegramAccount, account_id)
     if account is None or account.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Telegram account not found")
+        raise ApiError(404, "TELEGRAM_ACCOUNT_NOT_FOUND", "Telegram account not found")
     return account
 
 
@@ -227,7 +230,7 @@ async def disconnect(
     try:
         account = await TelegramAccountService(db).disconnect(workspace_id=workspace_id, account_id=account_id)
     except ValueError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+        raise ApiError(404, "TELEGRAM_ACCOUNT_NOT_FOUND", str(exc)) from exc
     await AuditService(db).record(
         workspace_id=workspace_id, actor_user_id=user.id, action="telegram.account_disconnected",
         entity_type="telegram_account", entity_id=account.id,
@@ -247,7 +250,7 @@ async def delete_account(
     try:
         account = await TelegramAccountService(db)._get(workspace_id, account_id)
     except ValueError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+        raise ApiError(404, "TELEGRAM_ACCOUNT_NOT_FOUND", str(exc)) from exc
     masked = account.phone_masked
     await TelegramAccountService(db).delete(workspace_id=workspace_id, account_id=account_id)
     await AuditService(db).record(

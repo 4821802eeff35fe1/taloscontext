@@ -3,12 +3,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_APPROVE_CONTENT, require_role
 from app.models.content import ContentItem
 from app.models.distribution import DistributionBatch, Publication
@@ -83,7 +84,7 @@ async def _batch_response(db: AsyncSession, batch: DistributionBatch) -> BatchRe
 async def _batch_or_404(db: AsyncSession, workspace_id: uuid.UUID, batch_id: uuid.UUID) -> DistributionBatch:
     batch = await db.get(DistributionBatch, batch_id)
     if not batch or batch.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Distribution batch not found")
+        raise ApiError(404, "BATCH_NOT_FOUND", "Distribution batch not found")
     return batch
 
 
@@ -122,7 +123,7 @@ async def retry_failed(
     batch = await _batch_or_404(db, workspace_id, batch_id)
     retried_ids = await PublishingService(db).retry_failed(batch_id)
     if not retried_ids:
-        raise HTTPException(status.HTTP_409_CONFLICT, "There are no failed publications to retry.")
+        raise ApiError(409, "NO_FAILED_PUBLICATIONS", "There are no failed publications to retry.")
 
     item = await db.get(ContentItem, batch.content_item_id)
     if item and ContentStatus.PUBLISHING in CONTENT_TRANSITIONS.get(item.status, set()):
@@ -160,11 +161,11 @@ async def resolve_publication(
     pub = await db.get(Publication, publication_id)
     batch = await db.get(DistributionBatch, pub.batch_id) if pub else None
     if pub is None or batch is None or batch.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Publication not found")
+        raise ApiError(404, "PUBLICATION_NOT_FOUND", "Publication not found")
     try:
         await PublishingService(db).resolve_unknown(pub, outcome=payload.outcome)
     except ValueError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+        raise ApiError(409, "PUBLICATION_NOT_RESOLVABLE", str(exc)) from exc
     await AuditService(db).record(
         workspace_id=workspace_id, actor_user_id=user.id, action=f"publication.marked_{payload.outcome}",
         entity_type="publication", entity_id=pub.id,

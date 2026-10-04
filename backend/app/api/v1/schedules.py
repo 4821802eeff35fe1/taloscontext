@@ -4,12 +4,13 @@ import json
 import uuid
 from datetime import UTC, date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_APPROVE_CONTENT, require_role
 from app.jobs.scheduler import MISFIRE_POLICIES
 from app.models.content import ContentItem
@@ -106,11 +107,11 @@ async def _apply(db: AsyncSession, workspace_id: uuid.UUID, s: Schedule, payload
         validate_timezone(payload.timezone)
         windows = validate_windows([(w.start, w.end) for w in payload.windows])
     except ScheduleValidationError as exc:
-        raise HTTPException(422, str(exc)) from exc
+        raise ApiError(422, "SCHEDULE_INVALID", str(exc)) from exc
     if payload.channel_set_id:
         cs = await db.get(ChannelSet, payload.channel_set_id)
         if cs is None or cs.workspace_id != workspace_id:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Channel set not found")
+            raise ApiError(404, "CHANNEL_SET_NOT_FOUND", "Channel set not found")
     s.name = payload.name
     s.channel_set_id = payload.channel_set_id
     s.timezone = payload.timezone
@@ -135,7 +136,7 @@ async def _apply(db: AsyncSession, workspace_id: uuid.UUID, s: Schedule, payload
 async def _get(db: AsyncSession, workspace_id: uuid.UUID, schedule_id: uuid.UUID) -> Schedule:
     s = await db.get(Schedule, schedule_id)
     if s is None or s.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Schedule not found")
+        raise ApiError(404, "SCHEDULE_NOT_FOUND", "Schedule not found")
     return s
 
 
@@ -219,7 +220,7 @@ async def preview_schedule(
         validate_timezone(payload.timezone)
         windows = validate_windows([(w.start, w.end) for w in payload.windows])
     except ScheduleValidationError as exc:
-        raise HTTPException(422, str(exc)) from exc
+        raise ApiError(422, "SCHEDULE_INVALID", str(exc)) from exc
     s = Schedule(
         id=uuid.uuid4(), workspace_id=workspace_id, name=payload.name, timezone=payload.timezone,
         days_of_week_json=json.dumps(payload.days_of_week), posts_per_day=payload.posts_per_day,

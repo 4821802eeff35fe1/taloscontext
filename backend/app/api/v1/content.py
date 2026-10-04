@@ -7,13 +7,14 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
 from app.api.v1.jobs import JobResponse
+from app.core.errors import ApiError
 from app.core.rbac import CAN_APPROVE_CONTENT, CAN_EDIT_CONTENT, require_role
 from app.models.content import ContentItem, ContentRevision, ContentSeries
 from app.models.cost import AIRequest
@@ -265,7 +266,7 @@ class CalendarResponse(BaseModel):
 async def _get_or_404(db: AsyncSession, workspace_id: uuid.UUID, content_id: uuid.UUID) -> ContentItem:
     item = await db.get(ContentItem, content_id, with_for_update=True)
     if not item or item.workspace_id != workspace_id or item.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Content item not found")
+        raise ApiError(404, "CONTENT_NOT_FOUND", "Content item not found")
     return item
 
 
@@ -285,14 +286,14 @@ async def _check_refs(db: AsyncSession, workspace_id: uuid.UUID, **refs) -> None
         model, label = models[field]
         obj = await db.get(model, value)
         if obj is None or obj.workspace_id != workspace_id:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, f"{label} not found")
+            raise ApiError(404, "REFERENCE_NOT_FOUND", f"{label} not found", entity=label)
 
 
 async def _transition(fn, item: ContentItem) -> ContentItem:
     try:
         return await fn(item)
     except InvalidTransitionError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+        raise ApiError(409, "INVALID_TRANSITION", str(exc)) from exc
 
 
 async def _ai_cost(db: AsyncSession, content_id: uuid.UUID) -> Decimal:
@@ -325,7 +326,7 @@ def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
         stamp, item_id = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
         return datetime.fromisoformat(stamp), uuid.UUID(item_id)
     except (ValueError, UnicodeDecodeError) as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid cursor") from exc
+        raise ApiError(400, "INVALID_CURSOR", "Invalid cursor") from exc
 
 
 async def _delivery_stats(db: AsyncSession, ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, int]]:
@@ -448,7 +449,7 @@ async def calendar(
 ):
     start, end = _aware(start), _aware(end)
     if end <= start or end - start > timedelta(days=62):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Calendar range must be positive and at most 62 days")
+        raise ApiError(400, "CALENDAR_RANGE_INVALID", "Calendar range must be positive and at most 62 days")
     stmt = select(ContentItem).where(
         ContentItem.workspace_id == workspace_id,
         ContentItem.deleted_at.is_(None),
@@ -567,7 +568,7 @@ async def generate(
     if payload.series_id:
         series = await db.get(ContentSeries, payload.series_id)
         if series.status in ("PAUSED", "COMPLETED"):
-            raise HTTPException(status.HTTP_409_CONFLICT, f"Series is {series.status.lower()}")
+            raise ApiError(409, "SERIES_NOT_ACTIVE", f"Series is {series.status.lower()}", status=series.status)
         progress = await SeriesService(db).progress(series)
         topic = topic or progress["next_topic"] or ""
         channel_set_id = channel_set_id or series.channel_set_id
@@ -611,11 +612,11 @@ async def edit_content(
     require_role(member.role, CAN_EDIT_CONTENT)
     item = await _get_or_404(db, workspace_id, content_id)
     if item.status not in EDITABLE_STATUSES and item.status != ContentStatus.SCHEDULED:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Content is {item.status.value.lower()} and can't be edited")
+        raise ApiError(409, "CONTENT_NOT_EDITABLE", f"Content is {item.status.value.lower()} and can't be edited", status=item.status.value)
     latest = await latest_revision(db, item.id)
     if payload.base_revision_id and latest and latest.id != payload.base_revision_id:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
+        raise ApiError(
+            409, "CONTENT_EDIT_CONFLICT",
             "This post was changed elsewhere (another tab, a teammate or an AI action). Reload to see the latest version.",
         )
     await _check_refs(db, workspace_id, channel_set_id=payload.channel_set_id, tone_profile_id=payload.tone_profile_id,
@@ -671,16 +672,16 @@ async def transform(
     require_role(member.role, CAN_EDIT_CONTENT)
     item = await _get_or_404(db, workspace_id, content_id)
     if payload.operation not in OPERATIONS:
-        raise HTTPException(422, f"Unknown operation {payload.operation!r}")
+        raise ApiError(422, "TRANSFORM_UNKNOWN_OPERATION", f"Unknown operation {payload.operation!r}", operation=payload.operation)
     if item.status not in EDITABLE_STATUSES:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Content is {item.status.value.lower()} and can't be edited")
+        raise ApiError(409, "CONTENT_NOT_EDITABLE", f"Content is {item.status.value.lower()} and can't be edited", status=item.status.value)
     if OPERATIONS[payload.operation][2] and not payload.selection.strip():
-        raise HTTPException(422, "Select the fragment to regenerate first.")
+        raise ApiError(422, "TRANSFORM_SELECTION_REQUIRED", "Select the fragment to regenerate first.")
     await _check_refs(db, workspace_id, tone_profile_id=payload.tone_profile_id)
     jobs = JobService(db)
     active = await jobs.active_for_entity("content", item.id)
     if active is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Another AI action is already running for this post.")
+        raise ApiError(409, "AI_ACTION_IN_PROGRESS", "Another AI action is already running for this post.")
     costs = CostService(db)
     await costs.assert_ai_allowed(workspace_id, costs.estimate_text_cost(len(item.telegram_html) + 6000, 1200))
     latest = await latest_revision(db, item.id)
@@ -764,10 +765,10 @@ async def restore_revision(
     require_role(member.role, CAN_EDIT_CONTENT)
     item = await _get_or_404(db, workspace_id, content_id)
     if item.status not in EDITABLE_STATUSES:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Content is {item.status.value.lower()} and can't be edited")
+        raise ApiError(409, "CONTENT_NOT_EDITABLE", f"Content is {item.status.value.lower()} and can't be edited", status=item.status.value)
     rev = await db.get(ContentRevision, revision_id)
     if rev is None or rev.content_item_id != item.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+        raise ApiError(404, "REVISION_NOT_FOUND", "Version not found")
     item.title, item.telegram_html = rev.title, sanitize_telegram_html(rev.telegram_html)
     item.plain_text = strip_to_plain_text(item.telegram_html)
     if item.status == ContentStatus.APPROVED:
@@ -821,7 +822,7 @@ async def submit_for_approval(
     await NotificationService(db).notify(
         workspace_id=workspace_id, kind="approval.required",
         message=f"“{item.title or 'Untitled'}” is waiting for approval.",
-        metadata={"content_id": str(item.id)}, min_role=WorkspaceRole.APPROVER,
+        metadata={"content_id": str(item.id), "title": item.title or ""}, min_role=WorkspaceRole.APPROVER,
         dedupe_key=f"approval:{item.id}", dedupe_window=timedelta(hours=6),
     )
     await db.commit()
@@ -863,11 +864,11 @@ async def reject(
 
 async def _apply_schedule(db: AsyncSession, workspace_id: uuid.UUID, item: ContentItem, at: datetime) -> None:
     if item.channel_set_id is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Choose a target channel set before scheduling.")
+        raise ApiError(409, "SCHEDULE_TARGET_REQUIRED", "Choose a target channel set before scheduling.")
     members = await db.scalar(select(func.count()).select_from(ChannelSetMember)
                               .where(ChannelSetMember.channel_set_id == item.channel_set_id))
     if not members:
-        raise HTTPException(status.HTTP_409_CONFLICT, "The target channel set has no channels.")
+        raise ApiError(409, "CHANNEL_SET_EMPTY", "The target channel set has no channels.")
     channel_set = await db.get(ChannelSet, item.channel_set_id)
     await DistributionService(db).prepare_batch(
         content_item=item, mode=channel_set.mode, workspace_cta_defaults=await cta_defaults(db, workspace_id)
@@ -897,12 +898,12 @@ async def schedule_content(
             ))).all() if r[0]]
         at = ScheduleService().next_free_slot(schedule, rules, after=now, occupied=occupied)
         if at is None:
-            raise HTTPException(status.HTTP_409_CONFLICT, "This schedule has no free slots in the next 120 days.")
+            raise ApiError(409, "SCHEDULE_NO_FREE_SLOTS", "This schedule has no free slots in the next 120 days.")
         item.schedule_id = schedule.id
     else:
         at = payload.scheduled_at if payload.scheduled_at.tzinfo else payload.scheduled_at.replace(tzinfo=UTC)
         if at < now - timedelta(minutes=1):
-            raise HTTPException(422, "Pick a time in the future.")
+            raise ApiError(422, "SCHEDULE_TIME_IN_PAST", "Pick a time in the future.")
     await _transition(_content_service(db).schedule_only_status, item)
     await _apply_schedule(db, workspace_id, item, at)
     await _audit(db, workspace_id, user, "content.scheduled", item, scheduled_at=at.isoformat())
@@ -921,10 +922,10 @@ async def reschedule_content(
     require_role(member.role, CAN_APPROVE_CONTENT)
     item = await _get_or_404(db, workspace_id, content_id)
     if item.status != ContentStatus.SCHEDULED:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Only scheduled posts can be moved.")
+        raise ApiError(409, "CONTENT_NOT_SCHEDULED", "Only scheduled posts can be moved.")
     at = payload.scheduled_at if payload.scheduled_at.tzinfo else payload.scheduled_at.replace(tzinfo=UTC)
     if at < datetime.now(UTC) - timedelta(minutes=1):
-        raise HTTPException(422, "Can't move a post into the past.")
+        raise ApiError(422, "SCHEDULE_TIME_IN_PAST", "Can't move a post into the past.")
     previous = item.scheduled_at
     item.scheduled_at = at
     await _audit(db, workspace_id, user, "content.rescheduled", item,
@@ -943,7 +944,7 @@ async def unschedule_content(
     require_role(member.role, CAN_APPROVE_CONTENT)
     item = await _get_or_404(db, workspace_id, content_id)
     if item.status != ContentStatus.SCHEDULED:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Post is not scheduled.")
+        raise ApiError(409, "CONTENT_NOT_SCHEDULED", "Post is not scheduled.")
     item.status = ContentStatus.APPROVED
     item.scheduled_at = None
     await _audit(db, workspace_id, user, "content.unscheduled", item)
@@ -980,7 +981,7 @@ async def delete_content(
     require_role(member.role, CAN_EDIT_CONTENT)
     item = await _get_or_404(db, workspace_id, content_id)
     if item.status in (ContentStatus.PUBLISHING, ContentStatus.PUBLISHED, ContentStatus.PARTIALLY_PUBLISHED):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Published posts can't be deleted; archive them instead.")
+        raise ApiError(409, "CONTENT_DELETE_PUBLISHED", "Published posts can't be deleted; archive them instead.")
     item.deleted_at = datetime.now(UTC)
     if item.status == ContentStatus.SCHEDULED:
         item.status = ContentStatus.ARCHIVED

@@ -4,12 +4,13 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.models.analytics import PostMetricSnapshot
 from app.models.content import ContentItem
 from app.models.cost import AIRequest
@@ -318,7 +319,7 @@ async def content_item_analytics(
 ):
     item = await db.get(ContentItem, content_id)
     if not item or item.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Content item not found")
+        raise ApiError(404, "CONTENT_NOT_FOUND", "Content item not found")
     totals = await AnalyticsService(db).content_item_totals(content_id)
     titles = dict((await db.execute(select(TelegramChannel.id, TelegramChannel.title)
                                     .where(TelegramChannel.workspace_id == workspace_id))).all())

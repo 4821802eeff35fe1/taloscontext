@@ -4,12 +4,13 @@ import json
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_MANAGE_TELEGRAM, require_role
 from app.models.analytics import PostMetricSnapshot
 from app.models.content import ContentItem
@@ -174,11 +175,11 @@ async def update_channel(
     require_role(member.role, CAN_MANAGE_TELEGRAM)
     channel = await db.get(TelegramChannel, channel_id)
     if not channel or channel.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Channel not found")
+        raise ApiError(404, "CHANNEL_NOT_FOUND", "Channel not found")
     if payload.tone_profile_id:
         tone = await db.get(ToneOfVoiceProfile, payload.tone_profile_id)
         if tone is None or tone.workspace_id != workspace_id:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tone profile not found")
+            raise ApiError(404, "TONE_PROFILE_NOT_FOUND", "Tone profile not found")
         channel.tone_profile_id = tone.id
     if payload.clear_tone_profile:
         channel.tone_profile_id = None
@@ -186,12 +187,12 @@ async def update_channel(
         try:
             channel.timezone = validate_timezone(payload.timezone)
         except ScheduleValidationError as exc:
-            raise HTTPException(422, str(exc)) from exc
+            raise ApiError(422, "TIMEZONE_INVALID", str(exc)) from exc
     if payload.autopilot_enabled is not None:
         channel.autopilot_enabled = payload.autopilot_enabled
     if payload.default_cta_key is not None:
         if payload.default_cta_key and payload.default_cta_key not in KNOWN_CTA_KEYS:
-            raise HTTPException(422, "Unknown CTA key")
+            raise ApiError(422, "CTA_KEY_UNKNOWN", "Unknown CTA key")
         channel.default_cta_key = payload.default_cta_key or None
     if payload.cta_overrides is not None:
         channel.cta_overrides_json = json.dumps(payload.cta_overrides, ensure_ascii=False)
@@ -208,7 +209,7 @@ async def _members_valid(db: AsyncSession, workspace_id: uuid.UUID, ids: list[uu
     owned = await db.scalar(select(func.count()).select_from(TelegramChannel).where(
         TelegramChannel.id.in_(ids), TelegramChannel.workspace_id == workspace_id))
     if owned != len(set(ids)):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "One or more channels do not belong to this workspace")
+        raise ApiError(400, "CHANNELS_NOT_IN_WORKSPACE", "One or more channels do not belong to this workspace")
 
 
 @router.get("/channel-sets", response_model=list[ChannelSetResponse])
@@ -244,7 +245,7 @@ async def create_channel_set(
 async def _set_or_404(db, workspace_id, set_id) -> ChannelSet:
     cs = await db.get(ChannelSet, set_id)
     if cs is None or cs.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Channel set not found")
+        raise ApiError(404, "CHANNEL_SET_NOT_FOUND", "Channel set not found")
     return cs
 
 
@@ -331,8 +332,7 @@ async def delete_channel_set(
     scheduled = await db.scalar(select(func.count()).select_from(ContentItem).where(
         ContentItem.channel_set_id == cs.id, ContentItem.status.in_([ContentStatus.SCHEDULED, ContentStatus.PUBLISHING])))
     if scheduled:
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            f"{scheduled} scheduled post(s) target this set. Unschedule or retarget them first.")
+        raise ApiError(409, "CHANNEL_SET_IN_USE", f"{scheduled} scheduled post(s) target this set. Unschedule or retarget them first.", count=scheduled)
     await db.delete(cs)
     await AuditService(db).record(workspace_id=workspace_id, actor_user_id=user.id, action="channel_set.deleted",
                                   entity_type="channel_set", entity_id=set_id, metadata={"name": cs.name})

@@ -5,12 +5,13 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.core.rbac import CAN_MANAGE_SETTINGS, require_role
 from app.models.identity import User, WorkspaceMember
 from app.models.ops import AuditLog
@@ -72,7 +73,7 @@ async def list_audit(
             stamp, last = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
             stamp_dt, last_id = datetime.fromisoformat(stamp), uuid.UUID(last)
         except (ValueError, UnicodeDecodeError) as exc:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid cursor") from exc
+            raise ApiError(400, "INVALID_CURSOR", "Invalid cursor") from exc
         stmt = stmt.where(or_(AuditLog.created_at < stamp_dt, and_(AuditLog.created_at == stamp_dt, AuditLog.id < last_id)))
     rows = (await db.execute(stmt.order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(limit + 1))).scalars().all()
     page = rows[:limit]

@@ -15,9 +15,11 @@ from app.models.scheduling import AutopilotConfig
 
 
 class BudgetExceededError(Exception):
-    def __init__(self, message: str, kind: str):
+    def __init__(self, message: str, kind: str, spent: Decimal | None = None, limit: Decimal | None = None):
         super().__init__(message)
         self.kind = kind
+        self.spent = str(spent) if spent is not None else None
+        self.limit = str(limit) if limit is not None else None
 
 
 @dataclass(frozen=True)
@@ -145,20 +147,20 @@ class CostService:
             raise BudgetExceededError(
                 f"Daily AI budget would be exceeded ({today} + {estimated_cost} > "
                 f"{config.daily_budget_rub} RUB). Autopilot generation is paused until tomorrow.",
-                kind="daily",
+                kind="daily", spent=today, limit=Decimal(config.daily_budget_rub),
             )
         month = await self.month_spend(workspace_id)
         if month + estimated_cost > config.monthly_budget_rub:
             raise BudgetExceededError(
                 f"Monthly AI budget would be exceeded ({month} + {estimated_cost} > "
                 f"{config.monthly_budget_rub} RUB). Autopilot generation is paused until next month.",
-                kind="monthly",
+                kind="monthly", spent=month, limit=Decimal(config.monthly_budget_rub),
             )
         if estimated_cost > config.max_cost_per_post_rub:
             raise BudgetExceededError(
                 f"Estimated post cost {estimated_cost} RUB exceeds max_cost_per_post_rub "
                 f"({config.max_cost_per_post_rub} RUB).",
-                kind="per_post",
+                kind="per_post", spent=estimated_cost, limit=Decimal(config.max_cost_per_post_rub),
             )
 
     async def budget_config(self, workspace_id: uuid.UUID) -> AutopilotConfig:
@@ -197,18 +199,19 @@ class CostService:
             raise BudgetExceededError(
                 f"AI daily budget reached ({today:.2f} of {Decimal(config.daily_budget_rub):.2f} ₽). "
                 "AI generation resumes tomorrow, or raise the limit in Settings → Budget.",
-                kind="daily",
+                kind="daily", spent=today, limit=Decimal(config.daily_budget_rub),
             )
         month = await self.month_spend(workspace_id)
         if month + estimated_cost > Decimal(config.monthly_budget_rub):
             raise BudgetExceededError(
                 f"AI monthly budget reached ({month:.2f} of {Decimal(config.monthly_budget_rub):.2f} ₽). "
                 "Raise the limit in Settings → Budget to continue.",
-                kind="monthly",
+                kind="monthly", spent=month, limit=Decimal(config.monthly_budget_rub),
             )
 
         if estimated_cost > Decimal(config.max_cost_per_post_rub):
-            raise BudgetExceededError("Estimated AI cost exceeds the maximum per post.", kind="post")
+            raise BudgetExceededError("Estimated AI cost exceeds the maximum per post.", kind="post",
+                                     spent=estimated_cost, limit=Decimal(config.max_cost_per_post_rub))
 
     async def check_budget_thresholds(self, workspace_id: uuid.UUID) -> None:
         """Raises warning/exceeded notifications once per period when a threshold is crossed."""

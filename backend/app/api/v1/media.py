@@ -6,13 +6,14 @@ from datetime import datetime
 from decimal import Decimal
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
 from app.api.v1.jobs import JobResponse
+from app.core.errors import ApiError
 from app.core.rbac import CAN_EDIT_CONTENT, require_role
 from app.models.content import ContentItem
 from app.models.enums import JobType, MediaStatus
@@ -89,7 +90,7 @@ async def _responses(db: AsyncSession, assets: list[MediaAsset]) -> list[MediaRe
 async def _asset_or_404(db, workspace_id, media_id) -> MediaAsset:
     asset = await db.get(MediaAsset, media_id)
     if not asset or asset.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
+        raise ApiError(404, "MEDIA_NOT_FOUND", "Media not found")
     return asset
 
 
@@ -119,7 +120,7 @@ async def list_media(
             stamp, last = base64.urlsafe_b64decode(cursor.encode()).decode().split("|")
             stamp_dt, last_id = datetime.fromisoformat(stamp), uuid.UUID(last)
         except (ValueError, UnicodeDecodeError) as exc:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid cursor") from exc
+            raise ApiError(400, "INVALID_CURSOR", "Invalid cursor") from exc
         stmt = stmt.where(or_(MediaAsset.created_at < stamp_dt,
                               and_(MediaAsset.created_at == stamp_dt, MediaAsset.id < last_id)))
     rows = (await db.execute(stmt.order_by(MediaAsset.created_at.desc(), MediaAsset.id.desc()).limit(limit + 1))).scalars().all()
@@ -143,7 +144,7 @@ async def upload(
     try:
         asset = await service.upload(workspace_id=workspace_id, data=data, original_filename=file.filename or "upload")
     except UnsupportedMediaError as exc:
-        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(exc)) from exc
+        raise ApiError(415, "MEDIA_UNSUPPORTED", str(exc)) from exc
     await AuditService(db).record(workspace_id=workspace_id, actor_user_id=user.id, action="media.uploaded",
                                   entity_type="media", entity_id=asset.id,
                                   metadata={"file": asset.original_filename, "bytes": asset.size_bytes})
@@ -170,11 +171,11 @@ async def generate_image(
 ):
     require_role(member.role, CAN_EDIT_CONTENT)
     if await get_image_provider().status() != ImageProviderStatus.AVAILABLE:
-        raise HTTPException(status.HTTP_409_CONFLICT, IMAGE_UNAVAILABLE)
+        raise ApiError(409, "AI_PROVIDER_UNAVAILABLE", IMAGE_UNAVAILABLE, provider="image")
     if payload.content_id:
         item = await db.get(ContentItem, payload.content_id)
         if item is None or item.workspace_id != workspace_id:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Content item not found")
+            raise ApiError(404, "CONTENT_NOT_FOUND", "Content item not found")
     from app.services.costs.service import CostService
 
     await CostService(db).assert_ai_allowed(workspace_id, Decimal(0))

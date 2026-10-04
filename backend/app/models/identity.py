@@ -16,6 +16,9 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(200), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # UI language chosen by the user ("ru" | "en"); NULL = never chosen, the
+    # client falls back to its stored choice / browser locale.
+    language: Mapped[str | None] = mapped_column(String(5), nullable=True)
 
     memberships: Mapped[list["WorkspaceMember"]] = relationship(back_populates="user")
 

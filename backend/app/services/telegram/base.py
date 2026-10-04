@@ -15,11 +15,33 @@ class TelegramErrorKind(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+_DEFAULT_CODES = {
+    "FLOOD_WAIT": "TELEGRAM_FLOOD_WAIT",
+    "NO_PERMISSION": "NO_POST_PERMISSION",
+    "ENTITY_NOT_FOUND": "TELEGRAM_ENTITY_NOT_FOUND",
+    "AUTH_REQUIRED": "TELEGRAM_AUTH_REQUIRED",
+    "NETWORK": "TELEGRAM_NETWORK_ERROR",
+    "UNKNOWN": "TELEGRAM_ERROR",
+}
+
+# Specific, user-actionable login failures (localized by the UI).
+_MESSAGE_CODES = {
+    "verification code is invalid": "TELEGRAM_CODE_INVALID",
+    "verification code has expired": "TELEGRAM_CODE_EXPIRED",
+    "2fa password is incorrect": "TELEGRAM_PASSWORD_INVALID",
+    "rejected this phone number": "TELEGRAM_PHONE_INVALID",
+}
+
+
 class TelegramOperationError(Exception):
-    def __init__(self, message: str, kind: TelegramErrorKind, wait_seconds: int | None = None):
+    def __init__(self, message: str, kind: TelegramErrorKind, wait_seconds: int | None = None,
+                 code: str | None = None):
         super().__init__(message)
         self.kind = kind
         self.wait_seconds = wait_seconds
+        lowered = message.lower()
+        self.code = code or next((c for k, c in _MESSAGE_CODES.items() if k in lowered), None) \
+            or _DEFAULT_CODES.get(kind.value, "TELEGRAM_ERROR")
 
 
 @dataclass

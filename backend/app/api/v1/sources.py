@@ -4,13 +4,14 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
 from app.api.v1.jobs import JobResponse
+from app.core.errors import ApiError
 from app.core.rbac import CAN_EDIT_CONTENT, require_role
 from app.models.enums import IdeaStatus, JobType
 from app.models.identity import User, WorkspaceMember
@@ -94,19 +95,19 @@ class IdeaUpdateRequest(BaseModel):
 def _validate_config(kind: str, config: SourceConfig) -> None:
     if kind in ("rss", "url", "manual"):
         if not config.url:
-            raise HTTPException(422, "This source needs a URL.")
+            raise ApiError(422, "SOURCE_URL_REQUIRED", "This source needs a URL.")
         try:
             assert_url_is_safe(config.url)
         except SSRFBlockedError as exc:
-            raise HTTPException(422, f"URL not allowed: {exc}") from exc
+            raise ApiError(422, "SOURCE_URL_BLOCKED", f"URL not allowed: {exc}") from exc
     if kind == "telegram" and not (config.channel and config.account_id):
-        raise HTTPException(422, "Pick a channel username and a connected account.")
+        raise ApiError(422, "SOURCE_TELEGRAM_CONFIG_REQUIRED", "Pick a channel username and a connected account.")
 
 
 async def _source_or_404(db: AsyncSession, workspace_id: uuid.UUID, source_id: uuid.UUID) -> Source:
     source = await db.get(Source, source_id)
     if source is None or source.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Source not found")
+        raise ApiError(404, "SOURCE_NOT_FOUND", "Source not found")
     return source
 
 
@@ -147,7 +148,7 @@ async def create_source(
     if payload.config.account_id:
         account = await db.get(TelegramAccount, payload.config.account_id)
         if account is None or account.workspace_id != workspace_id:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Telegram account not found")
+            raise ApiError(404, "TELEGRAM_ACCOUNT_NOT_FOUND", "Telegram account not found")
     source = Source(workspace_id=workspace_id, kind=payload.kind, name=payload.name, is_active=payload.enabled,
                     config_json=payload.config.model_dump_json())
     db.add(source)
@@ -183,7 +184,7 @@ async def update_source(
         if payload.config.account_id:
             account = await db.get(TelegramAccount, payload.config.account_id)
             if account is None or account.workspace_id != workspace_id:
-                raise HTTPException(404, "Telegram account not found")
+                raise ApiError(404, "TELEGRAM_ACCOUNT_NOT_FOUND", "Telegram account not found")
         old = json.loads(source.config_json or "{}")
         new = payload.config.model_dump(mode="json")
         new.update({k: old[k] for k in ("last_error", "last_success_at") if k in old})
@@ -277,7 +278,7 @@ async def update_idea(
     require_role(member.role, CAN_EDIT_CONTENT)
     idea = await db.get(SourceItem, idea_id)
     if idea is None or idea.workspace_id != workspace_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Idea not found")
+        raise ApiError(404, "IDEA_NOT_FOUND", "Idea not found")
     idea.status = payload.status
     await db.commit()
     source = await db.get(Source, idea.source_id)

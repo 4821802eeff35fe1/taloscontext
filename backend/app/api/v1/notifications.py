@@ -4,12 +4,13 @@ import json
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, get_workspace_member
+from app.core.errors import ApiError
 from app.models.identity import User, WorkspaceMember
 from app.models.ops import Notification
 
@@ -53,7 +54,7 @@ async def mark_read(workspace_id: uuid.UUID, notification_id: uuid.UUID,
                     db: AsyncSession = Depends(get_db)):
     n = await db.get(Notification, notification_id)
     if n is None or n.workspace_id != workspace_id or n.user_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Notification not found")
+        raise ApiError(404, "NOTIFICATION_NOT_FOUND", "Notification not found")
     n.read_at = n.read_at or datetime.now(UTC)
     await db.commit()
 
