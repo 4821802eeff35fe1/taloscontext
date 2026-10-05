@@ -86,7 +86,7 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
         />
         <Select
           className="w-44"
-          ariaLabel="Job status"
+          ariaLabel={t("jobs.statusAria")}
           value={status}
           onValueChange={setStatus}
           options={[
@@ -99,12 +99,12 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
             "CANCELLED",
           ].map((value) => ({
             value,
-            label: value === "all" ? "All statuses" : value,
+            label: value === "all" ? t("jobs.allStatuses") : statusLabel(value, "job"),
           }))}
         />
         <Select
           className="w-64"
-          ariaLabel="Job type"
+          ariaLabel={t("jobs.typeAria")}
           value={type}
           onValueChange={setType}
           options={[
