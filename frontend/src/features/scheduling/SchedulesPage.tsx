@@ -16,6 +16,7 @@ import { Checkbox, Select, Switch, TagInput } from "@/components/ui/forms";
 import { ConfirmDialog, Dialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
 import { dateTime, timezoneOptions } from "@/lib/format";
+import { misfirePolicyLabel } from "@/i18n/labels";
 const defaults: ScheduleInput = {
   name: "",
   channel_set_id: null,
@@ -304,7 +305,7 @@ function ScheduleEditor({
         </Field>
         <Field label={t("schedules.excludedDates")}>
           <TagInput
-            ariaLabel="Excluded dates"
+            ariaLabel={t("schedules.excludedDatesAria")}
             value={draft.exclude_dates}
             onChange={(v) => field("exclude_dates", v)}
           />
@@ -324,8 +325,8 @@ function ScheduleEditor({
             value,
             label:
               value === "default"
-                ? "Workspace policy"
-                : value.replaceAll("_", " "),
+                ? t("schedules.workspacePolicy")
+                : misfirePolicyLabel(value),
           }))}
         />
         <div className="flex gap-2">
