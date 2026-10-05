@@ -69,13 +69,15 @@ it("jobs show real attempts and failure", () => {
       }
     />,
   );
-  expect(screen.getByText(/Attempt 2 \/ 5/)).toBeInTheDocument();
-  expect(screen.getByText("FLOOD_WAIT: Wait 60 seconds")).toBeInTheDocument();
+  expect(screen.getByText(/Attempt 2 of 5/)).toBeInTheDocument();
+  // The error code is localized; the raw server message stays available as a tooltip.
+  const error = screen.getByText("Telegram limit (FloodWait): retrying later.");
+  expect(error).toHaveAttribute("title", "Wait 60 seconds");
 });
 it("all required editor actions use unique operation keys", () => {
   expect(TRANSFORM_ACTIONS).toHaveLength(9);
-  expect(new Set(TRANSFORM_ACTIONS.map(([op]) => op)).size).toBe(9);
-  expect(TRANSFORM_ACTIONS.map(([op]) => op)).toContain("regenerate_fragment");
+  expect(new Set(TRANSFORM_ACTIONS).size).toBe(9);
+  expect(TRANSFORM_ACTIONS).toContain("regenerate_fragment");
 });
 describe("calendar timezone and DST", () => {
   it("month cells are full Monday weeks", () => {

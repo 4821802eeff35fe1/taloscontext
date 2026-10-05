@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Series, type SeriesInput } from "@/lib/api";
 import {
   Button,
@@ -17,6 +18,7 @@ import { Dialog, ConfirmDialog } from "@/components/ui/overlays";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AppLink } from "@/components/ui/AppLink";
 import { useOperation } from "@/hooks/useOperations";
+import { statusLabel } from "@/i18n/labels";
 const initial: SeriesInput = {
   title: "",
   description: "",
@@ -29,6 +31,7 @@ const initial: SeriesInput = {
   planned_topics: [],
 };
 export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("content");
   const [editing, setEditing] = useState<Series | null | undefined>(),
     [selected, setSelected] = useState<Series | null>(null),
     [remove, setRemove] = useState<string | null>(null);
@@ -40,11 +43,11 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Series"
-        description="Plan a sequence of posts with shared context and tone."
+        title={t("series.title")}
+        description={t("series.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
-            Create series
+            {t("series.create")}
           </Button>
         }
       />
@@ -53,29 +56,31 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
       ) : query.isError ? (
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
-        <EmptyState title="No series yet" />
+        <EmptyState title={t("series.empty")} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {query.data.map((s) => (
             <Card className="p-4 space-y-3" key={s.id}>
-              <div className="flex justify-between">
-                <h2>{s.title}</h2>
-                <StatusBadge status={s.status} />
+              <div className="flex justify-between gap-2">
+                <h2 className="min-w-0 break-words">{s.title}</h2>
+                <StatusBadge status={s.status} domain="series" />
               </div>
               <p className="text-sm text-ink-muted">{s.description}</p>
               <p className="text-xs">
-                {s.published_count} published · {s.planned_count} planned ·
-                Next: {s.next_label} {s.next_topic}
+                {t("series.published", { count: s.published_count })} ·{" "}
+                {t("series.planned", { count: s.planned_count })}
+                {(s.next_label || s.next_topic) &&
+                  " · " + t("series.next", { part: [s.next_label, s.next_topic].filter(Boolean).join(" ") })}
               </p>
               <progress
                 className="w-full accent-accent"
                 max={Math.max(1, s.planned_count)}
                 value={s.published_count}
-                aria-label="Series progress"
+                aria-label={t("series.progress")}
               />
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setEditing(s)}>Edit</Button>
-                <Button onClick={() => setSelected(s)}>View parts</Button>
+                <Button onClick={() => setEditing(s)}>{t("common:action.edit")}</Button>
+                <Button onClick={() => setSelected(s)}>{t("series.viewParts")}</Button>
                 <Button
                   disabled={["PAUSED", "COMPLETED"].includes(s.status)}
                   onClick={() =>
@@ -84,10 +89,10 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
                     )
                   }
                 >
-                  Generate next part
+                  {t("series.generateNext")}
                 </Button>
                 <Button variant="danger" onClick={() => setRemove(s.id)}>
-                  Delete
+                  {t("common:action.delete")}
                 </Button>
               </div>
             </Card>
@@ -104,8 +109,11 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={!!selected}
         onOpenChange={(open) => !open && setSelected(null)}
-        title={selected?.title || "Parts"}
+        title={selected?.title || t("series.parts")}
       >
+        {selected && !selected.items.length && !selected.in_progress.length && (
+          <EmptyState title={t("series.noParts")} />
+        )}
         {[...(selected?.items ?? []), ...(selected?.in_progress ?? [])].map(
           (p) => (
             <AppLink
@@ -113,7 +121,7 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
               to={`/content?post=${p.content_id}`}
               className="block border-b py-3"
             >
-              {p.label} {p.title} · {p.status}
+              {p.label} {p.title || t("common:untitled")} · {statusLabel(p.status, "content")}
             </AppLink>
           ),
         )}
@@ -121,7 +129,7 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(open) => !open && setRemove(null)}
-        title="Delete this series?"
+        title={t("series.deleteConfirm")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteSeries(ws, remove!));
@@ -140,6 +148,7 @@ function SeriesEditor({
   series: Series | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("content");
   const [d, setD] = useState<SeriesInput>(series ?? initial);
   const sets = useQuery({
       queryKey: ["channel-sets", ws],
@@ -159,7 +168,7 @@ function SeriesEditor({
     onClose();
   });
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title="Series" size="lg">
+    <Dialog open onOpenChange={(o) => !o && onClose()} title={series ? t("series.editTitle") : t("series.createTitle")} size="lg">
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -170,9 +179,9 @@ function SeriesEditor({
         {(
           ["title", "description", "category", "numbering_format"] as const
         ).map((k) => (
-          <Field key={k} label={k.replaceAll("_", " ")}>
+          <Field key={k} label={t(`series.field.${k}`)}>
             <Input
-              aria-label={k}
+              aria-label={t(`series.field.${k}`)}
               value={d[k]}
               required={k === "title"}
               onChange={(e) => setD({ ...d, [k]: e.target.value })}
@@ -180,29 +189,32 @@ function SeriesEditor({
           </Field>
         ))}
         <Select
-          ariaLabel="Series status"
+          ariaLabel={t("series.field.status")}
           value={d.status}
           onValueChange={(v) => setD({ ...d, status: v })}
           options={["DRAFT", "ACTIVE", "PAUSED", "COMPLETED"].map((value) => ({
             value,
-            label: value,
+            label: statusLabel(value, "series"),
           }))}
         />
         {(
           [
             {
               field: "channel_set_id",
-              label: "Target",
+              label: t("series.field.target"),
+              none: t("series.none.target"),
               options: sets.data?.map((s) => ({ value: s.id, label: s.name })),
             },
             {
               field: "tone_profile_id",
-              label: "Tone",
+              label: t("series.field.tone"),
+              none: t("series.none.tone"),
               options: tones.data?.map((s) => ({ value: s.id, label: s.name })),
             },
             {
               field: "schedule_id",
-              label: "Schedule",
+              label: t("series.field.schedule"),
+              none: t("series.none.schedule"),
               options: schedules.data?.map((s) => ({
                 value: s.id,
                 label: s.name,
@@ -218,14 +230,14 @@ function SeriesEditor({
               setD({ ...d, [f.field]: v === "none" ? null : v })
             }
             options={[
-              { value: "none", label: "No " + f.label.toLowerCase() },
+              { value: "none", label: f.none },
               ...(f.options ?? []),
             ]}
           />
         ))}
-        <Field label="Planned topics (one per line)">
+        <Field label={t("series.field.topics")}>
           <Textarea
-            aria-label="Planned topics"
+            aria-label={t("series.field.topicsLabel")}
             value={d.planned_topics.join("\n")}
             onChange={(e) =>
               setD({ ...d, planned_topics: e.target.value.split("\n") })
@@ -233,7 +245,7 @@ function SeriesEditor({
           />
         </Field>
         <Button type="submit" variant="primary" loading={action.isPending}>
-          Save series
+          {t("series.save")}
         </Button>
       </form>
     </Dialog>

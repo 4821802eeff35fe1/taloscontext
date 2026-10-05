@@ -104,11 +104,13 @@ class NotificationService:
                 await channel.deliver(row)
             created += 1
         if created and emit:
-            emit("notification.created", {"kind": kind, "message": message})
+            emit("notification.created", {"kind": kind, "message": message, "metadata": metadata})
         elif created:
             from app.services.realtime.events import publish_event
 
-            await publish_event(workspace_id, "notification.created", {"kind": kind, "message": message})
+            await publish_event(
+                workspace_id, "notification.created", {"kind": kind, "message": message, "metadata": metadata}
+            )
         return created
 
     async def on_batch_progress(self, publication, emit: Emit | None = None) -> None:
@@ -125,14 +127,15 @@ class NotificationService:
         statuses = [r[0] for r in rows.all()]
         ok = sum(1 for s in statuses if s == PublicationStatus.SUCCESS)
         item = await self.session.get(ContentItem, batch.content_item_id)
-        title = (item.title or item.topic or "Post") if item else "Post"
+        title = (item.title or item.topic or "") if item else ""
+        label = title or "Post"
         kind, message = {
-            BatchStatus.SUCCESS: ("post.published", f"“{title}” published to {ok}/{len(statuses)} channels."),
+            BatchStatus.SUCCESS: ("post.published", f"“{label}” published to {ok}/{len(statuses)} channels."),
             BatchStatus.PARTIAL_FAILURE: (
                 "post.partially_published",
-                f"“{title}” published to {ok}/{len(statuses)} channels; {len(statuses) - ok} failed.",
+                f"“{label}” published to {ok}/{len(statuses)} channels; {len(statuses) - ok} failed.",
             ),
-            BatchStatus.FAILED: ("post.failed", f"“{title}” failed to publish to all {len(statuses)} channels."),
+            BatchStatus.FAILED: ("post.failed", f"“{label}” failed to publish to all {len(statuses)} channels."),
         }[batch.status]
         await self.notify(
             workspace_id=batch.workspace_id, kind=kind, message=message,

@@ -1,1 +1,88 @@
-{}
+{
+  "title": "Settings",
+  "tab": {
+    "general": "General",
+    "telegram": "Telegram",
+    "ai": "AI",
+    "budget": "Budget",
+    "storage": "Storage",
+    "security": "Security",
+    "notifications": "Notifications"
+  },
+  "general": {
+    "personal": "Your preferences",
+    "language": "Interface language",
+    "languageHint": "Applies to your account on every device. Post text is never translated.",
+    "workspace": "Workspace",
+    "workspaceName": "Workspace name",
+    "timezone": "Workspace timezone",
+    "misfirePolicy": "Default misfire policy",
+    "misfireGrace": "Misfire grace (minutes)",
+    "cta": "CTA: {{key}}",
+    "save": "Save general settings"
+  },
+  "members": {
+    "title": "Members",
+    "roleFor": "Role for {{email}}",
+    "email": "Member email",
+    "emailPlaceholder": "Existing user's email",
+    "newRole": "New member role",
+    "add": "Add member"
+  },
+  "role": {
+    "OWNER": "Owner",
+    "ADMIN": "Administrator",
+    "EDITOR": "Editor",
+    "APPROVER": "Approver",
+    "VIEWER": "Viewer"
+  },
+  "budget": {
+    "daily_budget_rub": "Daily budget, ₽",
+    "monthly_budget_rub": "Monthly budget, ₽",
+    "max_cost_per_post_rub": "Max cost per post, ₽",
+    "budget_warning_pct": "Warning threshold, %",
+    "save": "Save budget"
+  },
+  "ai": {
+    "textProvider": "Text provider",
+    "baseUrl": "Agent URL",
+    "apiKey": "API key",
+    "model": "Model",
+    "imageProvider": "Image provider",
+    "gatewayKey": "Gateway key",
+    "perMillion": "{{price}} per million tokens",
+    "pricing": {
+      "text_input_rub_per_m": "Text input",
+      "text_output_rub_per_m": "Text output",
+      "image_input_rub_per_m": "Image input",
+      "image_output_rub_per_m": "Image output"
+    }
+  },
+  "telegram": {
+    "api_id_configured": "API ID configured",
+    "api_hash_configured": "API hash configured",
+    "session_encryption_configured": "Session encryption configured",
+    "provider_is_fake": "Test (fake) provider"
+  },
+  "storage": {
+    "endpoint": "Endpoint",
+    "bucket": "Bucket",
+    "accessKey": "Access key"
+  },
+  "security": {
+    "lifetime_one": "Session lifetime: {{count}} hour",
+    "lifetime_other": "Session lifetime: {{count}} hours",
+    "idle_one": "idle timeout: {{count}} hour",
+    "idle_other": "idle timeout: {{count}} hours",
+    "revokeOthers": "Sign out other sessions",
+    "revokeConfirm": "Sign out all other sessions?",
+    "current": "Current session",
+    "session": "Session",
+    "lastActive": "Last active {{time}}"
+  },
+  "notifications": {
+    "muted": "Muted notification types",
+    "mutedHint": "Muted types don't create notifications for this workspace.",
+    "save": "Save notification preferences"
+  }
+}

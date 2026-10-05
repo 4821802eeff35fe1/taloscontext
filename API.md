@@ -1,8 +1,12 @@
-# API — v0.2.0
+# API — v0.3.0
 
 REST prefix `/api/v1`. Swagger at `/docs` and OpenAPI at `/openapi.json` are the exact contract: **114 HTTP operations** in the verified development configuration (including two health routes and the fake-only control). Production omits the development control.
 
 Cookie auth is `channelos_session`, a signed server-side session id. Mutations require `X-ChannelOS-Client`; browser client always sends it. Workspace routes check membership/role and foreign references. 429 responses expose Retry-After; 402 identifies budget rejection; 409 identifies invalid transitions/conflicts.
+
+Errors have one shape: `{"code": "BUDGET_EXCEEDED", "detail": "<English message>", "details": {"kind": "daily", "spent": "120", "limit": "100"}}`. `code` is stable and machine-readable; `details` holds the parameters a client needs to render its own message; `detail` is an English fallback kept for compatibility (validation errors keep FastAPI's list under `detail` with `code: VALIDATION_ERROR`). The web client localizes by `code` — see `frontend/src/i18n/locales/*/errors.json` for the full list. Notifications likewise carry `kind` + `metadata` parameters, audit events a machine `action`, and enums are returned unchanged; presentation is the client's job.
+
+`PATCH /auth/me` with `{"language": "ru" | "en" | null}` stores the user's interface language; `GET /auth/me` returns it (`null` = not chosen).
 
 Main route families:
 

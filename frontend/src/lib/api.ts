@@ -51,7 +51,7 @@ export function localizeApiError(
     if (details.kind) params.period = i18n.t(`common:period.${details.kind}`, { defaultValue: String(details.kind) });
     if (details.entity) params.entity = i18n.t(`common:entity.${String(details.entity).toLowerCase().replaceAll(" ", "_")}`, { defaultValue: String(details.entity) });
     const wait = (details.retry_after as number | undefined) ?? retryAfter ?? undefined;
-    if (wait !== undefined) params.seconds = wait;
+    params.seconds = wait ?? 60;
     return errorLabel(code, params);
   }
   if (code === "VALIDATION_ERROR") return i18n.t("errors:VALIDATION_ERROR_WITH", { message: fallback });
@@ -81,6 +81,15 @@ function describe(detail: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+const FALLBACK_CODES: Record<number, string> = {
+  401: "AUTH_REQUIRED",
+  403: "FORBIDDEN",
+  404: "NOT_FOUND",
+  409: "CONFLICT",
+  413: "MEDIA_UNSUPPORTED",
+  429: "RATE_LIMITED",
+};
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
@@ -119,6 +128,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch {
       // non-JSON error body
     }
+    // Responses without a code (proxy errors, HTML bodies) still get a localized message.
+    code ??= FALLBACK_CODES[response.status] ?? (response.status >= 500 ? "SERVICE_UNAVAILABLE" : null);
     const retry = response.headers.get("Retry-After");
     throw new ApiError(
       response.status,

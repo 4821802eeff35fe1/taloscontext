@@ -140,7 +140,8 @@
     "noImages": {
       "title": "No images",
       "description": "Upload images in the Media Gallery."
-    }
+    },
+    "name": "Content Studio"
   },
   "distribution": {
     "title": "Distribution",
@@ -153,6 +154,43 @@
     "resolve": {
       "title": "Resolve uncertain delivery?",
       "description": "Check the actual Telegram channel first. Confirming not delivered allows a later retry; confirming published prevents another send."
+    }
+  },
+  "series": {
+    "title": "Series",
+    "description": "Plan a sequence of posts with shared context and tone.",
+    "create": "Create series",
+    "empty": "No series yet",
+    "published_one": "{{count, number}} published",
+    "published_other": "{{count, number}} published",
+    "planned_one": "{{count, number}} planned",
+    "planned_other": "{{count, number}} planned",
+    "next": "Next: {{part}}",
+    "progress": "Series progress",
+    "viewParts": "View parts",
+    "generateNext": "Generate next part",
+    "parts": "Parts",
+    "noParts": "No parts yet",
+    "deleteConfirm": "Delete this series?",
+    "editTitle": "Edit series",
+    "createTitle": "New series",
+    "save": "Save series",
+    "field": {
+      "title": "Title",
+      "description": "Description",
+      "category": "Category",
+      "numbering_format": "Numbering format",
+      "status": "Series status",
+      "target": "Target",
+      "tone": "Tone",
+      "schedule": "Schedule",
+      "topics": "Planned topics (one per line)",
+      "topicsLabel": "Planned topics"
+    },
+    "none": {
+      "target": "No target",
+      "tone": "No tone",
+      "schedule": "No schedule"
     }
   }
 }

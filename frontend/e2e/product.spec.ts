@@ -43,7 +43,8 @@ test.describe.serial("daily product flow with fake providers", () => {
       page.getByRole("heading", { name: "Overview", exact: true }),
     ).toBeVisible();
     ws = (await get(page.request, "/workspaces"))[0].id;
-    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await page.getByRole("button", { name: "Account and language" }).click();
+    await page.getByRole("menuitem", { name: "Sign out" }).click();
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -110,7 +111,7 @@ test.describe.serial("daily product flow with fake providers", () => {
     await page
       .getByRole("button", { name: "Version history", exact: true })
       .click();
-    await expect(page.getByRole("dialog").getByText(/shorten/)).toBeVisible();
+    await expect(page.getByRole("dialog").getByText(/shorten/i)).toBeVisible();
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await page
       .getByRole("button", { name: "Submit for approval", exact: true })
@@ -270,7 +271,7 @@ test.describe.serial("daily product flow with fake providers", () => {
       .click();
     await page
       .getByRole("dialog")
-      .getByLabel("name", { exact: true })
+      .getByLabel("Name", { exact: true })
       .fill("Editorial voice");
     await page
       .getByRole("button", { name: "Save profile", exact: true })
@@ -325,7 +326,7 @@ test.describe.serial("daily product flow with fake providers", () => {
     await expect(
       page.getByRole("dialog", { name: "Commands and search" }),
     ).toBeVisible();
-    await page.getByLabel("Search commands and posts").fill("calendar");
+    await page.getByLabel("Search commands, posts and channels...").fill("calendar");
     await page
       .getByRole("option", { name: "Open Calendar", exact: true })
       .click();

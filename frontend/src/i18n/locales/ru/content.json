@@ -140,7 +140,8 @@
     "noImages": {
       "title": "Нет изображений",
       "description": "Загрузите изображения в медиагалерею."
-    }
+    },
+    "name": "Content Studio"
   },
   "distribution": {
     "title": "Публикация по каналам",
@@ -155,6 +156,47 @@
     "resolve": {
       "title": "Уточнить статус доставки?",
       "description": "Сначала проверьте сам Telegram-канал. Если подтвердить, что пост не доставлен, его можно будет отправить повторно; если подтвердить публикацию, повторной отправки не будет."
+    }
+  },
+  "series": {
+    "title": "Серии",
+    "description": "Планируйте цепочки постов с общим контекстом и тоном.",
+    "create": "Создать серию",
+    "empty": "Серий пока нет",
+    "published_one": "Опубликован {{count, number}}",
+    "published_few": "Опубликовано {{count, number}}",
+    "published_many": "Опубликовано {{count, number}}",
+    "published_other": "Опубликовано {{count, number}}",
+    "planned_one": "запланирован {{count, number}}",
+    "planned_few": "запланировано {{count, number}}",
+    "planned_many": "запланировано {{count, number}}",
+    "planned_other": "запланировано {{count, number}}",
+    "next": "Далее: {{part}}",
+    "progress": "Прогресс серии",
+    "viewParts": "Части серии",
+    "generateNext": "Сгенерировать следующую часть",
+    "parts": "Части",
+    "noParts": "Частей пока нет",
+    "deleteConfirm": "Удалить эту серию?",
+    "editTitle": "Изменить серию",
+    "createTitle": "Новая серия",
+    "save": "Сохранить серию",
+    "field": {
+      "title": "Название",
+      "description": "Описание",
+      "category": "Категория",
+      "numbering_format": "Формат нумерации",
+      "status": "Статус серии",
+      "target": "Куда публиковать",
+      "tone": "Тон",
+      "schedule": "Расписание",
+      "topics": "Запланированные темы (по одной в строке)",
+      "topicsLabel": "Запланированные темы"
+    },
+    "none": {
+      "target": "Без набора каналов",
+      "tone": "Без профиля тона",
+      "schedule": "Без расписания"
     }
   }
 }

@@ -1,1 +1,153 @@
-{}
+{
+  "knowledge": {
+    "title": "Knowledge",
+    "description": "Current facts and rules take priority over historical posts.",
+    "createBase": "Create knowledge base",
+    "editBase": "Edit knowledge base",
+    "addEntry": "Add entry",
+    "base": "Knowledge base",
+    "allBases": "All knowledge bases",
+    "uploadType": "Upload entry type",
+    "search": "Search knowledge",
+    "searchPlaceholder": "Search knowledge…",
+    "noHits": "Nothing found",
+    "deleteBase": "Delete base",
+    "enableBase": "Enable knowledge base",
+    "enableDoc": "Enable {{title}}",
+    "validUntil": "valid until {{date}}",
+    "preview": "Preview",
+    "name": "Name",
+    "baseName": "Knowledge base name",
+    "baseDescription": "Knowledge base description",
+    "saveBase": "Save base",
+    "parsed": "Parsed content",
+    "validityHint": "Optional validity date: expired facts are excluded from AI context.",
+    "saveValidity": "Save validity",
+    "clearValidity": "Clear validity",
+    "deleteBaseConfirm": "Delete this knowledge base?",
+    "deleteBaseHint": "Its documents remain available without a base.",
+    "deleteDocConfirm": "Delete this document?",
+    "empty": {
+      "title": "No knowledge yet",
+      "description": "Upload TXT, MD, JSON, CSV, PDF or Telegram Desktop result.json."
+    },
+    "entry": {
+      "title": "Add knowledge entry",
+      "titleLabel": "Entry title",
+      "titlePlaceholder": "Title",
+      "type": "Entry type",
+      "text": "Entry text",
+      "textPlaceholder": "Fact, rule, contact or example…",
+      "save": "Save entry"
+    },
+    "kind": {
+      "FACT": "Fact",
+      "CONTACT": "Contact",
+      "STYLE_EXAMPLE_GOOD": "Good style example",
+      "STYLE_EXAMPLE_BAD": "Bad style example",
+      "HISTORICAL_POST": "Historical post",
+      "RULE": "Rule",
+      "PROHIBITED_CLAIM": "Prohibited claim",
+      "LINK": "Link"
+    },
+    "warning": {
+      "serviceSkipped_one": "Skipped {{count}} service message",
+      "serviceSkipped_other": "Skipped {{count}} service messages",
+      "mediaSkipped_one": "Skipped {{count}} post without text (media only)",
+      "mediaSkipped_other": "Skipped {{count}} posts without text (media only)",
+      "truncated_one": "Text truncated to {{count}} character",
+      "truncated_other": "Text truncated to {{count, number}} characters",
+      "limited_one": "Only the first {{count}} entry was imported",
+      "limited_other": "Only the first {{count, number}} entries were imported"
+    }
+  },
+  "tone": {
+    "title": "Tone of voice",
+    "description": "Series → channel → workspace. Choose an explicit override in Content Studio.",
+    "create": "Create profile",
+    "empty": {
+      "title": "No tone profiles",
+      "description": "Define the voice your posts should use."
+    },
+    "workspaceDefault": "Workspace default",
+    "series_one": "{{count, number}} series",
+    "series_other": "{{count, number}} series",
+    "makeDefault": "Make default",
+    "deleteConfirm": "Delete this tone profile?",
+    "editTitle": "Edit tone profile",
+    "createTitle": "New tone profile",
+    "onePerLine": "{{field}} (one per line)",
+    "save": "Save profile",
+    "field": {
+      "name": "Name",
+      "description": "Description",
+      "language": "Content language",
+      "addressing": "Addressing",
+      "formality": "Formality",
+      "emoji_policy": "Emoji policy",
+      "headline_style": "Headline style",
+      "paragraph_style": "Paragraph style",
+      "average_length": "Average length",
+      "cta_style": "CTA style",
+      "allowed_vocabulary": "Allowed vocabulary",
+      "forbidden_vocabulary": "Forbidden vocabulary",
+      "cliches_blacklist": "Clichés to avoid",
+      "good_examples": "Good examples",
+      "bad_examples": "Bad examples"
+    }
+  },
+  "sources": {
+    "title": "Sources",
+    "description": "Fetched stories go to Ideas. Fetching never generates a post.",
+    "add": "Add source",
+    "editTitle": "Edit source",
+    "empty": {
+      "title": "No sources yet",
+      "description": "Add RSS, a website, a URL or a Telegram channel."
+    },
+    "enable": "Enable {{name}}",
+    "items_one": "{{fresh, number}} new / {{count, number}} total",
+    "items_other": "{{fresh, number}} new / {{count, number}} total",
+    "every_one": "every {{count}} min",
+    "every_other": "every {{count}} min",
+    "lastFetch": "Last fetch: {{time}}",
+    "lastSuccess": "Last success: {{time}}",
+    "lastError": "Last error",
+    "fetchNow": "Fetch now",
+    "deleteConfirm": "Delete this source?",
+    "name": "Name",
+    "type": "Source type",
+    "channel": "Telegram channel",
+    "account": "Telegram account for reading",
+    "accountPlaceholder": "Select an account…",
+    "url": "Source URL",
+    "interval": "Fetch interval (minutes)",
+    "intervalLabel": "Fetch interval",
+    "keywords": "Keywords",
+    "keywordsPlaceholder": "Keyword, then Enter",
+    "save": "Save source",
+    "kind": {
+      "rss": "RSS",
+      "url": "Web page",
+      "manual": "Manual URL",
+      "telegram": "Telegram channel",
+      "website": "Website"
+    }
+  },
+  "ideas": {
+    "title": "Ideas inbox",
+    "description": "Review sources and turn promising stories into posts.",
+    "status": "Idea status",
+    "all": "All ideas",
+    "search": "Search ideas",
+    "searchPlaceholder": "Search ideas…",
+    "empty": {
+      "title": "No ideas here",
+      "description": "Add a source and fetch its latest stories."
+    },
+    "generate": "Generate post",
+    "shortlist": "Save",
+    "dismiss": "Dismiss",
+    "openSource": "Open source"
+  }
+}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type ToneInput, type ToneProfile } from "@/lib/api";
 import {
   Button,
@@ -15,6 +16,7 @@ import {
 import { TagInput } from "@/components/ui/forms";
 import { ConfirmDialog, Dialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
+// Defaults below are prompt inputs (content settings), not UI copy.
 const initial: ToneInput = {
   name: "",
   description: "",
@@ -33,6 +35,7 @@ const initial: ToneInput = {
   bad_examples: [],
 };
 export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("ai");
   const [editing, setEditing] = useState<ToneProfile | null | undefined>(),
     [remove, setRemove] = useState<string | null>(null);
   const query = useQuery({
@@ -43,11 +46,11 @@ export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Tone of voice"
-        description="Series → channel → workspace. Choose an explicit override in Content Studio."
+        title={t("tone.title")}
+        description={t("tone.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
-            Create profile
+            {t("tone.create")}
           </Button>
         }
       />
@@ -57,33 +60,34 @@ export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
         <EmptyState
-          title="No tone profiles"
-          description="Define the voice your posts should use."
+          title={t("tone.empty.title")}
+          description={t("tone.empty.description")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {query.data.map((p) => (
             <Card key={p.id} className="p-4 space-y-3">
-              <h2 className="font-medium">
+              <h2 className="break-words font-medium">
                 {p.name}
-                {p.is_workspace_default && " · Workspace default"}
+                {p.is_workspace_default && " · " + t("tone.workspaceDefault")}
               </h2>
               <p className="text-sm text-ink-muted">{p.description}</p>
               <p className="text-xs">
-                {p.channel_count} channels · {p.series_count} series
+                {t("common:count.channels", { count: p.channel_count })} ·{" "}
+                {t("tone.series", { count: p.series_count })}
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setEditing(p)}>Edit</Button>
+                <Button onClick={() => setEditing(p)}>{t("common:action.edit")}</Button>
                 <Button
                   disabled={p.is_workspace_default}
                   onClick={() =>
                     action.mutate(() => endpoints.makeToneDefault(ws, p.id))
                   }
                 >
-                  Make default
+                  {t("tone.makeDefault")}
                 </Button>
                 <Button variant="danger" onClick={() => setRemove(p.id)}>
-                  Delete
+                  {t("common:action.delete")}
                 </Button>
               </div>
             </Card>
@@ -101,7 +105,7 @@ export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(open) => !open && setRemove(null)}
-        title="Delete this tone profile?"
+        title={t("tone.deleteConfirm")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteTone(ws, remove!));
@@ -120,6 +124,7 @@ function ToneEditor({
   profile: ToneProfile | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("ai");
   const [draft, setDraft] = useState<ToneInput>(profile ?? initial);
   const action = useOperation(ws, async () => {
     if (profile) await endpoints.updateTone(ws, profile.id, draft);
@@ -130,7 +135,7 @@ function ToneEditor({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title="Tone profile"
+      title={profile ? t("tone.editTitle") : t("tone.createTitle")}
       size="lg"
     >
       <form
@@ -146,7 +151,7 @@ function ToneEditor({
             .map((k) => (
               <Field
                 key={k}
-                label={k.replaceAll("_", " ")}
+                label={t(`tone.field.${k}`)}
                 htmlFor={`tone-${k}`}
               >
                 <Input
@@ -165,18 +170,18 @@ function ToneEditor({
             "cliches_blacklist",
           ] as const
         ).map((k) => (
-          <Field key={k} label={k.replaceAll("_", " ")}>
+          <Field key={k} label={t(`tone.field.${k}`)}>
             <TagInput
-              ariaLabel={k}
+              ariaLabel={t(`tone.field.${k}`)}
               value={draft[k]}
               onChange={(v) => setDraft({ ...draft, [k]: v })}
             />
           </Field>
         ))}
         {(["good_examples", "bad_examples"] as const).map((k) => (
-          <Field key={k} label={k.replaceAll("_", " ") + " (one per line)"}>
+          <Field key={k} label={t("tone.onePerLine", { field: t(`tone.field.${k}`) })}>
             <Textarea
-              aria-label={k}
+              aria-label={t(`tone.field.${k}`)}
               value={draft[k].join("\n")}
               onChange={(e) =>
                 setDraft({ ...draft, [k]: e.target.value.split("\n") })
@@ -185,7 +190,7 @@ function ToneEditor({
           </Field>
         ))}
         <Button variant="primary" type="submit" loading={action.isPending}>
-          Save profile
+          {t("tone.save")}
         </Button>
       </form>
     </Dialog>

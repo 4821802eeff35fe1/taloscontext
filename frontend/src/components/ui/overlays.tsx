@@ -5,6 +5,8 @@ import * as RadixPopover from "@radix-ui/react-popover";
 import * as RadixTooltip from "@radix-ui/react-tooltip";
 import { X, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Button, cn } from "./primitives";
 
 // ---------------------------------------------------------------- Dialog
@@ -62,7 +64,7 @@ export function Dialog({
               )}
             </div>
             <RadixDialog.Close asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Close">
+              <Button variant="ghost" size="icon-sm" aria-label={i18n.t("common:action.close")}>
                 <X className="h-4 w-4" />
               </Button>
             </RadixDialog.Close>
@@ -87,7 +89,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel,
   destructive,
   loading,
   onConfirm,
@@ -101,6 +103,7 @@ export function ConfirmDialog({
   loading?: boolean;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog
       open={open}
@@ -110,14 +113,14 @@ export function ConfirmDialog({
       size="sm"
       footer={
         <>
-          <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => onOpenChange(false)}>{t("action.cancel")}</Button>
           <Button
             variant={destructive ? "danger" : "primary"}
             loading={loading}
             onClick={onConfirm}
             autoFocus
           >
-            {confirmLabel}
+            {confirmLabel ?? t("action.confirm")}
           </Button>
         </>
       }
@@ -182,11 +185,11 @@ export function Drawer({
                   description ? "mt-0.5 text-xs text-ink-muted" : "sr-only"
                 }
               >
-                {description ?? "Details"}
+                {description ?? i18n.t("common:action.details")}
               </RadixDialog.Description>
             </div>
             <RadixDialog.Close asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Close">
+              <Button variant="ghost" size="icon-sm" aria-label={i18n.t("common:action.close")}>
                 <X className="h-4 w-4" />
               </Button>
             </RadixDialog.Close>

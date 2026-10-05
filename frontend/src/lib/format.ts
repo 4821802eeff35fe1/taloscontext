@@ -79,12 +79,14 @@ export function dateTime(iso: string | null | undefined, tz = "UTC", style: Date
     : style === "HH:mm" ? "time" : "datetime";
   const showYear = kind === "full" || new Date().getFullYear() !== yearIn(d, tz);
   const opts: Intl.DateTimeFormatOptions = { timeZone: tz };
-  if (kind === "time") Object.assign(opts, { hour: "numeric", minute: "2-digit" });
+  // Russian writes 24h times with a leading zero (02:42); English keeps 2:42 AM.
+  const hour = intlLocale().startsWith("ru") ? "2-digit" : "numeric";
+  if (kind === "time") Object.assign(opts, { hour, minute: "2-digit" });
   else if (kind === "month-year") Object.assign(opts, { month: "long", year: "numeric" });
   else {
     Object.assign(opts, { month: "short", day: "numeric", ...(showYear ? { year: "numeric" } : {}) });
     if (kind === "weekday-date") opts.weekday = "short";
-    if (kind === "datetime" || kind === "full") Object.assign(opts, { hour: "numeric", minute: "2-digit" });
+    if (kind === "datetime" || kind === "full") Object.assign(opts, { hour, minute: "2-digit" });
   }
   return new Intl.DateTimeFormat(intlLocale(), opts).format(d);
 }
@@ -94,13 +96,19 @@ function yearIn(d: Date, tz: string): number {
 }
 
 /** Plain calendar date (no timezone shift), e.g. a day cell or "2026-03-10". */
-export function calendarDate(d: Date, style: "day" | "weekday-day" | "long" | "month-year" = "long"): string {
+export function calendarDate(
+  d: Date,
+  style: "day" | "weekday-day" | "long" | "month-year" = "long",
+  timeZone?: string,
+): string {
   const opts: Intl.DateTimeFormatOptions =
     style === "day" ? { day: "numeric" }
       : style === "weekday-day" ? { weekday: "short", day: "numeric" }
         : style === "month-year" ? { month: "long", year: "numeric" }
           : { day: "numeric", month: "long", year: "numeric" };
-  return new Intl.DateTimeFormat(intlLocale(), opts).format(d);
+  const text = new Intl.DateTimeFormat(intlLocale(), { ...opts, timeZone }).format(d);
+  // Standalone month names are lowercase in Russian; headings start uppercase.
+  return style === "month-year" ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
 
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
@@ -144,4 +152,11 @@ export const COMMON_TIMEZONES = [
 export function timezoneOptions(extra?: string) {
   const list = extra && !COMMON_TIMEZONES.includes(extra) ? [extra, ...COMMON_TIMEZONES] : COMMON_TIMEZONES;
   return list.map((tz) => ({ value: tz, label: tz.replace("_", " ") }));
+}
+
+/** Short weekday names starting from Monday (index 0), matching the API's day numbering. */
+export function weekdayNames(width: "short" | "long" = "short"): string[] {
+  const fmt = new Intl.DateTimeFormat(intlLocale(), { weekday: width, timeZone: "UTC" });
+  // 2024-01-01 was a Monday.
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2024, 0, 1 + i))));
 }

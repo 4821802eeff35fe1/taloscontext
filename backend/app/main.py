@@ -25,7 +25,7 @@ from app.services.system.health import readiness
 configure_logging(json_logs=get_settings().is_production)
 log = get_logger(__name__)
 
-app = FastAPI(title="ChannelOS API", version="0.2.0")
+app = FastAPI(title="ChannelOS API", version="0.3.0")
 
 settings = get_settings()
 

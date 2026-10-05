@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Source } from "@/lib/api";
 import {
   Button,
@@ -15,7 +16,9 @@ import { Select, Switch, TagInput } from "@/components/ui/forms";
 import { Dialog, ConfirmDialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
 import { dateTime } from "@/lib/format";
+import { sourceKindLabel, statusLabel } from "@/i18n/labels";
 export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("ai");
   const [editing, setEditing] = useState<Source | null | undefined>(),
     [remove, setRemove] = useState<string | null>(null);
   const query = useQuery({
@@ -26,11 +29,11 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Sources"
-        description="Fetched stories go to Ideas. Fetching never generates a post."
+        title={t("sources.title")}
+        description={t("sources.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
-            Add source
+            {t("sources.add")}
           </Button>
         }
       />
@@ -40,17 +43,17 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
         <EmptyState
-          title="No sources yet"
-          description="Add RSS, a website, a URL or a Telegram channel."
+          title={t("sources.empty.title")}
+          description={t("sources.empty.description")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {query.data.map((s) => (
             <Card key={s.id} className="p-4 space-y-3">
-              <div className="flex justify-between">
-                <h2>{s.name}</h2>
+              <div className="flex justify-between gap-2">
+                <h2 className="min-w-0 break-words">{s.name}</h2>
                 <Switch
-                  label={`Enable ${s.name}`}
+                  label={t("sources.enable", { name: s.name })}
                   checked={s.enabled}
                   onCheckedChange={(enabled) =>
                     action.mutate(() =>
@@ -60,27 +63,30 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
                 />
               </div>
               <p className="text-xs text-ink-muted">
-                {s.kind} · {s.items_new} new / {s.items_total} total · Every{" "}
-                {String(s.config.fetch_interval_minutes)} min
+                {sourceKindLabel(s.kind)} ·{" "}
+                {t("sources.items", { count: s.items_total, fresh: s.items_new })} ·{" "}
+                {t("sources.every", { count: Number(s.config.fetch_interval_minutes ?? 60) })}
               </p>
               <p className="text-xs">
-                Last fetch: {dateTime(s.last_fetched_at)} · Success:{" "}
-                {dateTime(s.last_success_at)}
+                {t("sources.lastFetch", { time: s.last_fetched_at ? dateTime(s.last_fetched_at) : t("common:state.never") })} ·{" "}
+                {t("sources.lastSuccess", { time: s.last_success_at ? dateTime(s.last_success_at) : t("common:state.never") })}
               </p>
               {s.last_error && (
-                <p className="text-xs text-danger">{s.last_error}</p>
+                <p className="break-words text-xs text-danger">
+                  {t("sources.lastError")}: <span className="font-mono">{s.last_error}</span>
+                </p>
               )}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   onClick={() =>
                     action.mutate(() => endpoints.fetchSource(ws, s.id))
                   }
                 >
-                  Fetch now
+                  {t("sources.fetchNow")}
                 </Button>
-                <Button onClick={() => setEditing(s)}>Edit</Button>
+                <Button onClick={() => setEditing(s)}>{t("common:action.edit")}</Button>
                 <Button variant="danger" onClick={() => setRemove(s.id)}>
-                  Delete
+                  {t("common:action.delete")}
                 </Button>
               </div>
             </Card>
@@ -97,7 +103,7 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(o) => !o && setRemove(null)}
-        title="Delete this source?"
+        title={t("sources.deleteConfirm")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteSource(ws, remove!));
@@ -116,6 +122,7 @@ function SourceEditor({
   source: Source | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("ai");
   const [name, setName] = useState(source?.name ?? ""),
     [kind, setKind] = useState(source?.kind ?? "rss"),
     [url, setUrl] = useState(String(source?.config.url ?? "")),
@@ -152,7 +159,7 @@ function SourceEditor({
     onClose();
   });
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title="Source">
+    <Dialog open onOpenChange={(o) => !o && onClose()} title={source ? t("sources.editTitle") : t("sources.add")}>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -161,33 +168,34 @@ function SourceEditor({
         }}
       >
         <Input
-          aria-label="Source name"
-          placeholder="Name"
+          aria-label={t("sources.name")}
+          placeholder={t("sources.name")}
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <Select
-          ariaLabel="Source type"
+          ariaLabel={t("sources.type")}
           disabled={!!source}
           value={kind}
           onValueChange={setKind}
           options={["rss", "url", "manual", "telegram"].map((value) => ({
             value,
-            label: value,
+            label: sourceKindLabel(value),
           }))}
         />
         {kind === "telegram" ? (
           <>
             <Input
-              aria-label="Telegram channel"
+              aria-label={t("sources.channel")}
               placeholder="@channel"
               value={channel}
               onChange={(e) => setChannel(e.target.value)}
             />
             <Select
-              ariaLabel="Source Telegram account"
-              value={account}
+              ariaLabel={t("sources.account")}
+              placeholder={t("sources.accountPlaceholder")}
+              value={account === "none" ? undefined : account}
               onValueChange={setAccount}
               options={(accounts.data ?? [])
                 .filter((a) => a.status === "CONNECTED")
@@ -196,7 +204,7 @@ function SourceEditor({
           </>
         ) : (
           <Input
-            aria-label="Source URL"
+            aria-label={t("sources.url")}
             type="url"
             placeholder="https://…"
             required
@@ -204,9 +212,9 @@ function SourceEditor({
             onChange={(e) => setUrl(e.target.value)}
           />
         )}
-        <Field label="Fetch interval (minutes)">
+        <Field label={t("sources.interval")}>
           <Input
-            aria-label="Fetch interval"
+            aria-label={t("sources.intervalLabel")}
             type="number"
             min={10}
             value={interval}
@@ -214,18 +222,20 @@ function SourceEditor({
           />
         </Field>
         <TagInput
-          ariaLabel="Keywords"
+          ariaLabel={t("sources.keywords")}
+          placeholder={t("sources.keywordsPlaceholder")}
           value={keywords}
           onChange={setKeywords}
         />
         <Button type="submit" loading={action.isPending} variant="primary">
-          Save source
+          {t("sources.save")}
         </Button>
       </form>
     </Dialog>
   );
 }
 export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("ai");
   const [status, setStatus] = useState("NEW"),
     [q, setQ] = useState("");
   const query = useQuery({
@@ -240,26 +250,26 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Ideas inbox"
-        description="Review sources and turn promising stories into posts."
+        title={t("ideas.title")}
+        description={t("ideas.description")}
       />
       <div className="flex gap-2 flex-wrap">
         <Select
-          ariaLabel="Idea status"
-          className="w-52"
+          ariaLabel={t("ideas.status")}
+          className="w-full sm:w-52"
           value={status}
           onValueChange={setStatus}
           options={["all", "NEW", "SHORTLISTED", "USED", "DISMISSED"].map(
             (value) => ({
               value,
-              label: value === "all" ? "All ideas" : value,
+              label: value === "all" ? t("ideas.all") : statusLabel(value, "idea"),
             }),
           )}
         />
         <Input
-          aria-label="Search ideas"
-          placeholder="Search ideas…"
-          className="max-w-xs"
+          aria-label={t("ideas.search")}
+          placeholder={t("ideas.searchPlaceholder")}
+          className="w-full sm:max-w-xs"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -270,16 +280,17 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={query.error} />
       ) : !query.data.items.length ? (
         <EmptyState
-          title="No ideas here"
-          description="Add a source and fetch its latest stories."
+          title={t("ideas.empty.title")}
+          description={t("ideas.empty.description")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {query.data.items.map((i) => (
             <Card key={i.id} className="p-4 space-y-3">
-              <h2 className="font-medium">{i.title}</h2>
+              <h2 className="break-words font-medium">{i.title}</h2>
               <p className="text-xs text-ink-faint">
-                {i.source_name} · {dateTime(i.published_at)} · {i.status}
+                {i.source_name}
+                {i.published_at && " · " + dateTime(i.published_at)} · {statusLabel(i.status, "idea")}
               </p>
               <p className="text-sm text-ink-muted">{i.summary}</p>
               <div className="flex flex-wrap gap-2">
@@ -290,7 +301,7 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
                     )
                   }
                 >
-                  Generate post
+                  {t("ideas.generate")}
                 </Button>
                 <Button
                   onClick={() =>
@@ -299,7 +310,7 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
                     )
                   }
                 >
-                  Save
+                  {t("ideas.shortlist")}
                 </Button>
                 <Button
                   onClick={() =>
@@ -308,7 +319,7 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
                     )
                   }
                 >
-                  Dismiss
+                  {t("ideas.dismiss")}
                 </Button>
                 {/^https?:\/\//i.test(i.url) && (
                   <a
@@ -317,7 +328,7 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Open source
+                    {t("ideas.openSource")}
                   </a>
                 )}
               </div>

@@ -1,1 +1,27 @@
-{}
+{
+  "gallery": {
+    "title": "Media gallery",
+    "generateHint": "Create an image with AI",
+    "generate": "Generate image",
+    "generateAction": "Generate",
+    "tab": {
+      "all": "All",
+      "generated": "Generated",
+      "uploaded": "Uploaded",
+      "used": "Used",
+      "unused": "Unused",
+      "archived": "Archived"
+    },
+    "empty": {
+      "title": "No images here",
+      "description": "Upload an image to use it in a post."
+    },
+    "generatedImage": "Generated image",
+    "image": "Image",
+    "used": "Used",
+    "unused": "Unused",
+    "details": "Image details",
+    "prompt": "Image prompt",
+    "promptPlaceholder": "Describe the image…"
+  }
+}

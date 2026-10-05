@@ -289,5 +289,24 @@
       "COMPLETED": "Connected",
       "FAILED": "Failed"
     }
+  },
+  "picker": {
+    "dateTime": "Date and time",
+    "pick": "Pick date and time",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "calendar": "Calendar",
+    "hour": "Hour",
+    "minute": "Minute"
+  },
+  "tags": {
+    "remove": "Remove {{tag}}",
+    "placeholder": "Type and press Enter"
+  },
+  "tabs": {
+    "sections": "Sections"
+  },
+  "select": {
+    "placeholder": "Select…"
   }
 }

@@ -112,7 +112,7 @@ async def _settings_payload(db: AsyncSession, workspace_id: uuid.UUID) -> dict:
             "text_provider_is_fake": s.use_fake_ai_provider,
             "agent_base_url": mask_agent_url(s.timeweb_agent_base_url),
             "agent_api_key": mask_secret(s.timeweb_agent_api_key),
-            "model": "GPT-6 Sol (selected in the Timeweb agent settings)",
+            "model": "GPT-6 Sol",
             "pricing": {
                 "text_input_rub_per_m": str(pricing.text_input_rub_per_m),
                 "text_output_rub_per_m": str(pricing.text_output_rub_per_m),

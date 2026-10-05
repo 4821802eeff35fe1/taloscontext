@@ -15,3 +15,11 @@ globalThis.ResizeObserver ??=
 Element.prototype.scrollIntoView ??= () => {};
 Element.prototype.hasPointerCapture ??= () => false;
 Element.prototype.releasePointerCapture ??= () => {};
+
+// Every test starts in English with no stored choice; tests opt into Russian.
+import i18n from "@/i18n";
+import { beforeEach } from "vitest";
+beforeEach(async () => {
+  localStorage.clear();
+  await i18n.changeLanguage("en");
+});

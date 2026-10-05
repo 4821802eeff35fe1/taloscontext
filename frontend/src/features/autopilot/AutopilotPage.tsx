@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Autopilot } from "@/lib/api";
 import {
   Button,
@@ -13,8 +14,10 @@ import {
 import { Select, Switch } from "@/components/ui/forms";
 import { Tooltip } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
+import { errorLabel } from "@/i18n/labels";
 
 export function AutopilotPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("automation");
   const query = useQuery({
     queryKey: ["autopilot", ws],
     queryFn: () => endpoints.autopilot(ws),
@@ -22,8 +25,8 @@ export function AutopilotPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="max-w-2xl space-y-4">
       <PageHeader
-        title="Autopilot"
-        description="Plan from your editorial context and Ideas inbox under the workspace budget."
+        title={t("autopilot.title")}
+        description={t("autopilot.description")}
       />
       {query.isPending ? (
         <SkeletonRows />
@@ -36,6 +39,7 @@ export function AutopilotPage({ workspaceId: ws }: { workspaceId: string }) {
   );
 }
 function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
+  const { t } = useTranslation("automation");
   const [draft, setDraft] = useState(initial);
   const sets = useQuery({
     queryKey: ["channel-sets", ws],
@@ -52,7 +56,7 @@ function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
   const save = useOperation(
     ws,
     () => endpoints.updateAutopilot(ws, draft),
-    "Autopilot settings saved",
+    t("autopilot.saved"),
   );
   const change = <K extends keyof Autopilot>(key: K, value: Autopilot[K]) =>
     setDraft({ ...draft, [key]: value });
@@ -65,54 +69,47 @@ function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
           save.mutate();
         }}
       >
-        <Field label="Mode">
+        <Field label={t("autopilot.mode")}>
           <Select
-            ariaLabel="Autopilot mode"
+            ariaLabel={t("autopilot.modeLabel")}
             value={draft.mode}
             onValueChange={(v) => change("mode", v)}
-            options={[
-              { value: "MANUAL", label: "Manual — no automatic generation" },
-              {
-                value: "APPROVAL",
-                label: "Approval — drafts need your approval",
-              },
-              {
-                value: "AUTOPILOT",
-                label: "Autopilot — generate, approve and schedule",
-              },
-            ]}
+            options={["MANUAL", "APPROVAL", "AUTOPILOT"].map((value) => ({
+              value,
+              label: t(`autopilot.modeOption.${value}`),
+            }))}
           />
         </Field>
-        <Field label="Target">
+        <Field label={t("autopilot.target")}>
           <Select
-            ariaLabel="Autopilot target"
+            ariaLabel={t("autopilot.targetLabel")}
             value={draft.channel_set_id ?? "none"}
             onValueChange={(v) =>
               change("channel_set_id", v === "none" ? null : v)
             }
             options={[
-              { value: "none", label: "Choose channel set" },
+              { value: "none", label: t("autopilot.chooseSet") },
               ...(sets.data ?? []).map((s) => ({ value: s.id, label: s.name })),
             ]}
           />
         </Field>
-        <Field label="Schedule">
+        <Field label={t("autopilot.schedule")}>
           <Select
-            ariaLabel="Autopilot schedule"
+            ariaLabel={t("autopilot.scheduleLabel")}
             value={draft.schedule_id ?? "none"}
             onValueChange={(v) =>
               change("schedule_id", v === "none" ? null : v)
             }
             options={[
-              { value: "none", label: "No schedule" },
+              { value: "none", label: t("autopilot.noSchedule") },
               ...(schedules.data ?? []).map((s) => ({
                 value: s.id,
-                label: `${s.name}${s.enabled ? "" : " (paused)"}`,
+                label: s.enabled ? s.name : t("autopilot.pausedSchedule", { name: s.name }),
               })),
             ]}
           />
         </Field>
-        <Field label="Posts per day" htmlFor="autopilot-posts">
+        <Field label={t("autopilot.postsPerDay")} htmlFor="autopilot-posts">
           <Input
             id="autopilot-posts"
             type="number"
@@ -130,9 +127,9 @@ function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
               "max_cost_per_post_rub",
             ] as const
           ).map((key) => (
-            <Field key={key} label={key.replaceAll("_", " ")}>
+            <Field key={key} label={t(`autopilot.field.${key}`)}>
               <Input
-                aria-label={key}
+                aria-label={t(`autopilot.field.${key}`)}
                 type="number"
                 min={0}
                 step="0.01"
@@ -145,26 +142,25 @@ function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
         <Tooltip
           content={
             !image.data?.available
-              ? image.data?.message || "Image provider is unavailable"
+              ? errorLabel("IMAGE_PROVIDER_UNAVAILABLE")
               : undefined
           }
         >
           <span className="inline-flex gap-2 items-center">
             <Switch
-              label="Generate images"
+              label={t("autopilot.generateImages")}
               checked={draft.generate_image}
               disabled={!image.data?.available}
               onCheckedChange={(v) => change("generate_image", v)}
             />
-            Generate images
+            {t("autopilot.generateImages")}
           </span>
         </Tooltip>
         <p className="text-xs text-ink-muted">
-          Publishing approved posts continues even when the AI budget is
-          exhausted. Missed schedules use your configured misfire policy.
+          {t("autopilot.note")}
         </p>
         <Button type="submit" variant="primary" loading={save.isPending}>
-          Save autopilot
+          {t("autopilot.save")}
         </Button>
       </form>
     </Card>

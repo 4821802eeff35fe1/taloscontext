@@ -18,6 +18,11 @@ function humanize(value: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** True for plain keys and for keys that only exist in plural forms. */
+function hasKey(key: string): boolean {
+  return i18n.exists(key) || i18n.exists(key, { count: 1 });
+}
+
 function lookup(keys: string[], value: string, options?: Record<string, unknown>): string {
   for (const key of keys) {
     if (i18n.exists(key)) return i18n.t(key, options) as string;
@@ -41,11 +46,16 @@ export function aiOperationLabel(op: string) {
 }
 
 export function auditActionLabel(action: string) {
-  return lookup([`system:audit.action.${action.replaceAll(".", "_")}`], action);
+  // Parameterized actions: content.ai_<operation>, content.misfire_<policy>, publication.marked_<outcome>
+  const ai = /^content\.ai_(.+)$/.exec(action);
+  if (ai) return i18n.t("system:audit.actionName.content_ai", { operation: aiOperationLabel(ai[1].toUpperCase()) }) as string;
+  const misfire = /^content\.misfire_(.+)$/.exec(action);
+  if (misfire) return i18n.t("system:audit.actionName.content_misfire", { policy: misfirePolicyLabel(misfire[1].toUpperCase()) }) as string;
+  return lookup([`system:audit.actionName.${action.replaceAll(".", "_")}`], action);
 }
 
 export function entityLabel(entity: string) {
-  return lookup([`system:audit.entity.${entity}`], entity);
+  return lookup([`system:audit.entityName.${entity}`], entity);
 }
 
 export function knowledgeKindLabel(kind: string) {
@@ -69,7 +79,7 @@ export function misfirePolicyLabel(policy: string) {
 }
 
 export function autopilotModeLabel(mode: string) {
-  return lookup([`automation:autopilot.mode.${mode}.label`], mode);
+  return lookup([`automation:autopilot.modeName.${mode}.label`], mode);
 }
 
 export function ctaKeyLabel(key: string) {
@@ -94,7 +104,7 @@ export type NotificationLike = { kind: string; message: string; metadata: Record
  */
 export function notificationText(n: NotificationLike): string {
   const key = `system:notification.${n.kind.replaceAll(".", "_")}`;
-  if (!i18n.exists(key)) return n.message;
+  if (!hasKey(key)) return n.message;
   const m = n.metadata ?? {};
   const required: Record<string, string[]> = {
     "post.published": ["title", "published", "total"],
@@ -134,9 +144,55 @@ function formatRub(v: string) {
 /** Localized text for an API/job/publication error code; null if unknown. */
 export function errorLabel(code: string, params: Record<string, unknown> = {}): string {
   const key = `errors:${code}`;
-  return i18n.exists(key) ? (i18n.t(key, params) as string) : humanize(code);
+  return hasKey(key) ? (i18n.t(key, params) as string) : humanize(code);
 }
 
 export function knownError(code: string | null | undefined): boolean {
-  return !!code && i18n.exists(`errors:${code}`);
+  return !!code && hasKey(`errors:${code}`);
+}
+
+// Import warnings are stored as English sentences; known shapes are mapped
+// to translated templates, anything else is shown verbatim.
+const KNOWLEDGE_WARNINGS: [RegExp, string][] = [
+  [/^Skipped (\d+) service messages$/, "serviceSkipped"],
+  [/^Skipped (\d+) posts without text \(media only\)$/, "mediaSkipped"],
+  [/^Text truncated to (\d+) characters$/, "truncated"],
+  [/^Only the first (\d+) entries were imported$/, "limited"],
+];
+
+export function knowledgeWarningLabel(warning: string): string {
+  for (const [pattern, key] of KNOWLEDGE_WARNINGS) {
+    const match = pattern.exec(warning);
+    if (match) return i18n.t(`ai:knowledge.warning.${key}`, { count: Number(match[1]) }) as string;
+  }
+  return warning;
+}
+
+// Job summaries are stored as English text with user content after a fixed
+// prefix ("Fetch <source>", "Shorten: <title>"); the prefix is translated and
+// the user content is kept as-is.
+const JOB_SUMMARIES: [RegExp, string][] = [
+  [/^Generate: ([\s\S]*)$/, "generate"],
+  [/^Image: ([\s\S]*)$/, "image"],
+  [/^Retry publish to ([\s\S]*)$/, "retryPublish"],
+  [/^Publish to ([\s\S]*)$/, "publish"],
+  [/^Fetch ([\s\S]*)$/, "fetch"],
+  [/^Import channels for ([\s\S]*)$/, "importChannels"],
+  [/^Autopilot plan for (\d{4}-\d{2}-\d{2})$/, "autopilotPlan"],
+  [/^Refresh post metrics \(last 7 days\)$/, "refreshMetrics"],
+];
+
+export function jobSummaryLabel(summary: string, jobType: string): string {
+  if (!summary) return jobTypeLabel(jobType);
+  for (const [pattern, key] of JOB_SUMMARIES) {
+    const match = pattern.exec(summary);
+    if (match) return i18n.t(`automation:jobSummary.${key}`, { value: match[1] ?? "" }) as string;
+  }
+  // AI transforms: "<Operation name>: <title>"
+  const transform = /^([A-Z][a-z]+(?: [a-z]+)*): ([\s\S]*)$/.exec(summary);
+  if (transform) {
+    const op = transform[1].toUpperCase().replaceAll(" ", "_");
+    if (i18n.exists(`content:operation.${op}`)) return `${aiOperationLabel(op)}: ${transform[2]}`;
+  }
+  return summary;
 }

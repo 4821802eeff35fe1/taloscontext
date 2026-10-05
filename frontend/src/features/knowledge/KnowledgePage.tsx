@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type KnowledgeBase, type KnowledgeDoc } from "@/lib/api";
 import {
   Button,
@@ -15,6 +16,8 @@ import {
 import { DateTimePicker, Select, Switch } from "@/components/ui/forms";
 import { ConfirmDialog, Dialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
+import { knowledgeKindLabel, knowledgeWarningLabel } from "@/i18n/labels";
+import { dateTime } from "@/lib/format";
 const kinds = [
   "FACT",
   "CONTACT",
@@ -26,6 +29,7 @@ const kinds = [
   "LINK",
 ];
 export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("ai");
   const [base, setBase] = useState("all"),
     [kind, setKind] = useState("FACT"),
     [q, setQ] = useState(""),
@@ -65,16 +69,16 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Knowledge"
-        description="Current facts and rules take priority over historical posts."
+        title={t("knowledge.title")}
+        description={t("knowledge.description")}
         actions={
           <>
             <Button onClick={() => setCreate(true)}>
-              Create knowledge base
+              {t("knowledge.createBase")}
             </Button>
-            <Button onClick={() => setEntry(true)}>Add entry</Button>
+            <Button onClick={() => setEntry(true)}>{t("knowledge.addEntry")}</Button>
             <Button variant="primary" onClick={() => file.current?.click()}>
-              Upload
+              {t("common:action.upload")}
             </Button>
             <input
               ref={file}
@@ -100,29 +104,29 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
       />
       <div className="flex flex-wrap gap-2">
         <Select
-          ariaLabel="Knowledge base"
-          className="w-60"
+          ariaLabel={t("knowledge.base")}
+          className="w-full sm:w-60"
           value={base}
           onValueChange={setBase}
           options={[
-            { value: "all", label: "All knowledge bases" },
+            { value: "all", label: t("knowledge.allBases") },
             ...(bases.data ?? []).map((b) => ({ value: b.id, label: b.name })),
           ]}
         />
         <Select
-          ariaLabel="Upload entry type"
-          className="w-60"
+          ariaLabel={t("knowledge.uploadType")}
+          className="w-full sm:w-60"
           value={kind}
           onValueChange={setKind}
           options={kinds.map((value) => ({
             value,
-            label: value.replaceAll("_", " "),
+            label: knowledgeKindLabel(value),
           }))}
         />
         <Input
-          aria-label="Search knowledge"
-          placeholder="Search knowledge…"
-          className="max-w-xs"
+          aria-label={t("knowledge.search")}
+          placeholder={t("knowledge.searchPlaceholder")}
+          className="w-full sm:max-w-xs"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -136,7 +140,8 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
               className="p-4 flex flex-wrap justify-between gap-3"
             >
               <span>
-                {b.name} · {b.documents} documents · {b.entries} entries
+                {b.name} · {t("common:count.documents", { count: b.documents })} ·{" "}
+                {t("common:count.entries", { count: b.entries })}
               </span>
               <Button
                 onClick={() => {
@@ -145,13 +150,13 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
                   setBaseDescription(b.description);
                 }}
               >
-                Edit
+                {t("common:action.edit")}
               </Button>
               <Button variant="danger" onClick={() => setRemovingBase(b)}>
-                Delete base
+                {t("knowledge.deleteBase")}
               </Button>
               <Switch
-                label="Enable knowledge base"
+                label={t("knowledge.enableBase")}
                 checked={b.enabled}
                 onCheckedChange={(enabled) =>
                   action.mutate(() =>
@@ -169,6 +174,8 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
         <Card className="p-4">
           {hits.isError ? (
             <ErrorState error={hits.error} />
+          ) : hits.data && !hits.data.length ? (
+            <EmptyState title={t("knowledge.noHits")} />
           ) : (
             hits.data?.map((h, i) => (
               <button
@@ -177,7 +184,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
                 className="block border-b py-3 text-left w-full"
               >
                 <p>
-                  {h.document_title} · {h.kind}
+                  {h.document_title} · {knowledgeKindLabel(h.kind)}
                 </p>
                 <p className="text-sm text-ink-muted">{h.snippet}</p>
               </button>
@@ -190,8 +197,8 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={docs.error} />
       ) : !docs.data.length ? (
         <EmptyState
-          title="No knowledge yet"
-          description="Upload TXT, MD, JSON, CSV, PDF or Telegram Desktop result.json."
+          title={t("knowledge.empty.title")}
+          description={t("knowledge.empty.description")}
         />
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
@@ -200,12 +207,12 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
               <div className="flex justify-between gap-3">
                 <button
                   onClick={() => setSelected(d.id)}
-                  className="font-medium text-left"
+                  className="min-w-0 break-words text-left font-medium"
                 >
                   {d.title}
                 </button>
                 <Switch
-                  label={`Enable ${d.title}`}
+                  label={t("knowledge.enableDoc", { title: d.title })}
                   checked={d.enabled}
                   onCheckedChange={(enabled) =>
                     action.mutate(() =>
@@ -215,18 +222,20 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
                 />
               </div>
               <p className="text-xs text-ink-muted">
-                {d.kind} · {d.format} · {d.entries} entries
-                {d.valid_until && " · valid until " + d.valid_until}
+                {knowledgeKindLabel(d.kind)} · {d.format} ·{" "}
+                {t("common:count.entries", { count: d.entries })}
+                {d.valid_until &&
+                  " · " + t("knowledge.validUntil", { date: dateTime(d.valid_until, "UTC", "date") })}
               </p>
               {d.warnings.map((w) => (
                 <p key={w} className="text-xs text-warning">
-                  {w}
+                  {knowledgeWarningLabel(w)}
                 </p>
               ))}
-              <div className="flex gap-2">
-                <Button onClick={() => setSelected(d.id)}>Preview</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => setSelected(d.id)}>{t("knowledge.preview")}</Button>
                 <Button variant="danger" onClick={() => setRemove(d)}>
-                  Delete
+                  {t("common:action.delete")}
                 </Button>
               </div>
             </Card>
@@ -236,11 +245,11 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={create}
         onOpenChange={setCreate}
-        title="Create knowledge base"
+        title={t("knowledge.createBase")}
       >
-        <Field label="Name">
+        <Field label={t("knowledge.name")}>
           <Input
-            aria-label="Knowledge base name"
+            aria-label={t("knowledge.baseName")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -260,25 +269,26 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
             setName("");
           }}
         >
-          Create
+          {t("common:action.create")}
         </Button>
       </Dialog>
-      <Dialog open={entry} onOpenChange={setEntry} title="Add knowledge entry">
+      <Dialog open={entry} onOpenChange={setEntry} title={t("knowledge.entry.title")}>
         <div className="space-y-3">
           <Input
-            aria-label="Entry title"
-            placeholder="Title"
+            aria-label={t("knowledge.entry.titleLabel")}
+            placeholder={t("knowledge.entry.titlePlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <Select
-            ariaLabel="Entry type"
+            ariaLabel={t("knowledge.entry.type")}
             value={kind}
             onValueChange={setKind}
-            options={kinds.map((value) => ({ value, label: value }))}
+            options={kinds.map((value) => ({ value, label: knowledgeKindLabel(value) }))}
           />
           <Textarea
-            aria-label="Entry text"
+            aria-label={t("knowledge.entry.text")}
+            placeholder={t("knowledge.entry.textPlaceholder")}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -298,19 +308,19 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
               setText("");
             }}
           >
-            Save entry
+            {t("knowledge.entry.save")}
           </Button>
         </div>
       </Dialog>
       <Dialog
         open={!!selected}
         onOpenChange={(open) => !open && setSelected(null)}
-        title={detail.data?.title || "Parsed content"}
+        title={detail.data?.title || t("knowledge.parsed")}
         size="lg"
       >
-        <div className="mb-4 space-y-2">
-          <p className="text-xs text-ink-muted">
-            Optional validity date: expired facts are excluded from AI context.
+        <div className="mb-4 flex flex-wrap items-end gap-2">
+          <p className="w-full text-xs text-ink-muted">
+            {t("knowledge.validityHint")}
           </p>
           <DateTimePicker
             value={validUntil ?? detail.data?.valid_until ?? null}
@@ -327,7 +337,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
               )
             }
           >
-            Save validity
+            {t("knowledge.saveValidity")}
           </Button>
           <Button
             onClick={() =>
@@ -338,7 +348,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
               )
             }
           >
-            Clear validity
+            {t("knowledge.clearValidity")}
           </Button>
         </div>
         {detail.isPending ? (
@@ -349,7 +359,8 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
           detail.data?.preview.map((p) => (
             <div className="border-b py-3" key={p.id}>
               <p className="text-xs text-ink-faint">
-                {p.kind} · {p.effective_at}
+                {knowledgeKindLabel(p.kind)}
+                {p.effective_at && " · " + dateTime(p.effective_at)}
               </p>
               <p className="whitespace-pre-wrap text-sm">{p.content}</p>
               <pre className="overflow-auto text-xs text-ink-muted mt-2">
@@ -362,16 +373,16 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={!!editingBase}
         onOpenChange={(open) => !open && setEditingBase(null)}
-        title="Edit knowledge base"
+        title={t("knowledge.editBase")}
       >
         <div className="space-y-3">
           <Input
-            aria-label="Knowledge base name"
+            aria-label={t("knowledge.baseName")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <Textarea
-            aria-label="Knowledge base description"
+            aria-label={t("knowledge.baseDescription")}
             value={baseDescription}
             onChange={(e) => setBaseDescription(e.target.value)}
           />
@@ -388,15 +399,15 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
               setEditingBase(null);
             }}
           >
-            Save base
+            {t("knowledge.saveBase")}
           </Button>
         </div>
       </Dialog>
       <ConfirmDialog
         open={!!removingBase}
         onOpenChange={(open) => !open && setRemovingBase(null)}
-        title="Delete this knowledge base?"
-        description="Its documents remain available without a base."
+        title={t("knowledge.deleteBaseConfirm")}
+        description={t("knowledge.deleteBaseHint")}
         destructive
         onConfirm={() => {
           action.mutate(() =>
@@ -409,7 +420,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(open) => !open && setRemove(null)}
-        title="Delete this document?"
+        title={t("knowledge.deleteDocConfirm")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteKnowledgeDoc(ws, remove!.id));

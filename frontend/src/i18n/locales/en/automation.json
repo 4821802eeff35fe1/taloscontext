@@ -1,1 +1,164 @@
-{}
+{
+  "calendar": {
+    "title": "Calendar",
+    "description": "Drag the handle to move a scheduled post. “Change time” works with keyboard and touch.",
+    "move": "Move {{title}}",
+    "postImage": "Post image",
+    "changeTime": "Change time",
+    "rescheduled": "Post rescheduled",
+    "previous": "Previous period",
+    "next": "Next period",
+    "mode": "Calendar view",
+    "view": {
+      "month": "Month",
+      "week": "Week",
+      "day": "Day"
+    },
+    "timezone": "Calendar timezone",
+    "target": "Calendar target",
+    "allSets": "All channel sets",
+    "freeSlots": "Next free slots",
+    "reschedule": "Reschedule post",
+    "saveTime": "Save new time"
+  },
+  "schedules": {
+    "title": "Schedules",
+    "description": "Local time windows become persistent UTC publication times.",
+    "create": "Create schedule",
+    "editTitle": "Edit schedule",
+    "empty": {
+      "title": "No schedules",
+      "description": "Define posting windows for a channel set."
+    },
+    "enable": "Enable {{name}}",
+    "anyTarget": "Any target",
+    "anySet": "Any channel set",
+    "random": "Random time",
+    "fixed": "Fixed time",
+    "deleteConfirm": "Delete this schedule?",
+    "deleteHint": "Existing scheduled posts keep their times.",
+    "previewUpdated": "Preview updated",
+    "name": "Name",
+    "target": "Schedule target",
+    "timezone": "Schedule timezone",
+    "field": {
+      "posts_per_day": "Posts per day",
+      "min_interval_minutes": "Min. interval (minutes)",
+      "max_posts_per_day": "Max. posts per day"
+    },
+    "windows": "Time windows",
+    "windowStart": "Window {{n}} start",
+    "windowEnd": "Window {{n}} end",
+    "timePlaceholder": "HH:MM",
+    "removeWindow": "Remove window",
+    "addWindow": "Add window",
+    "randomized": "Randomized times",
+    "randomizedHint": "Randomize inside windows",
+    "categories": "Categories",
+    "excluded": "Excluded dates (YYYY-MM-DD)",
+    "excludedLabel": "Excluded dates",
+    "excludedPlaceholder": "2026-12-31, then Enter",
+    "misfire": "Misfire policy",
+    "workspacePolicy": "Workspace policy",
+    "preview": "Preview slots",
+    "save": "Save schedule"
+  },
+  "misfire": {
+    "SKIP": {
+      "label": "Skip missed posts"
+    },
+    "PUBLISH_IMMEDIATELY": {
+      "label": "Publish immediately"
+    },
+    "RESCHEDULE_NEXT_SLOT": {
+      "label": "Move to the next free slot"
+    }
+  },
+  "autopilot": {
+    "title": "Autopilot",
+    "description": "Plan from your editorial context and Ideas inbox under the workspace budget.",
+    "saved": "Autopilot settings saved",
+    "mode": "Mode",
+    "modeLabel": "Autopilot mode",
+    "modeOption": {
+      "MANUAL": "Manual — no automatic generation",
+      "APPROVAL": "Approval — drafts need your approval",
+      "AUTOPILOT": "Autopilot — generate, approve and schedule"
+    },
+    "target": "Target",
+    "targetLabel": "Autopilot target",
+    "chooseSet": "Choose channel set",
+    "schedule": "Schedule",
+    "scheduleLabel": "Autopilot schedule",
+    "noSchedule": "No schedule",
+    "pausedSchedule": "{{name}} (paused)",
+    "postsPerDay": "Posts per day",
+    "field": {
+      "daily_budget_rub": "Daily budget, ₽",
+      "monthly_budget_rub": "Monthly budget, ₽",
+      "max_cost_per_post_rub": "Max cost per post, ₽"
+    },
+    "generateImages": "Generate images",
+    "note": "Publishing approved posts continues even when the AI budget is exhausted. Missed schedules use your configured misfire policy.",
+    "save": "Save autopilot",
+    "modeName": {
+      "MANUAL": {
+        "label": "Manual"
+      },
+      "APPROVAL": {
+        "label": "Approval"
+      },
+      "AUTOPILOT": {
+        "label": "Autopilot"
+      }
+    }
+  },
+  "jobs": {
+    "title": "Jobs",
+    "description": "Persistent background operations and every delivery attempt.",
+    "search": "Search jobs",
+    "searchPlaceholder": "Search jobs…",
+    "status": "Job status",
+    "allStatuses": "All statuses",
+    "type": "Job type",
+    "allTypes": "All operations",
+    "empty": {
+      "title": "No matching jobs",
+      "description": "Generate or publish a post to see operations here."
+    },
+    "details": "Job details",
+    "attempt": "Attempt {{attempt}} of {{max}}",
+    "progress": "Job progress",
+    "queued": "Queued {{time}}",
+    "started": "started {{time}}",
+    "worker": "worker {{worker}}",
+    "nextRetry": "next retry {{time}}",
+    "technical": "Technical details",
+    "retry": "Retry failed",
+    "cancel": "Cancel queued",
+    "attempts": "Attempts",
+    "cancelConfirm": "Cancel this job?"
+  },
+  "jobType": {
+    "AI_GENERATE_POST": "Post generation",
+    "AI_REWRITE_POST": "Post rewrite",
+    "AI_REWRITE": "Text edit",
+    "AI_GENERATE_IMAGE": "Image generation",
+    "TELEGRAM_PUBLISH": "Telegram publication",
+    "TELEGRAM_RETRY": "Publication retry",
+    "TELEGRAM_REFRESH_CHANNELS": "Channel import",
+    "TELEGRAM_REFRESH_METRICS": "Metrics refresh",
+    "SOURCE_FETCH": "Source fetch",
+    "AUTOPILOT_PLAN": "Autopilot planning"
+  },
+  "jobSummary": {
+    "generate": "Generate: {{value}}",
+    "image": "Image: {{value}}",
+    "retryPublish": "Retry publication to {{value}}",
+    "publish": "Publish to {{value}}",
+    "fetch": "Fetch {{value}}",
+    "importChannels": "Import channels for {{value}}",
+    "autopilotPlan": "Autopilot plan for {{value}}",
+    "refreshMetrics": "Refresh post metrics (last 7 days)"
+  }
+}

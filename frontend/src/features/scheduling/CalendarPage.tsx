@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   DndContext,
   KeyboardSensor,
@@ -26,7 +27,8 @@ import { Dialog } from "@/components/ui/overlays";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ContentDetailPanel } from "@/features/content/ContentDetailPanel";
 import { toast } from "@/components/ui/toast";
-import { dateTime, timezoneOptions } from "@/lib/format";
+import { calendarDate, dateTime, timezoneOptions } from "@/lib/format";
+import { categoryLabel } from "@/i18n/labels";
 function Entry({
   entry,
   onClick,
@@ -36,6 +38,7 @@ function Entry({
   workspaceId: string;
   onClick: () => void;
 }) {
+  const { t } = useTranslation("automation");
   const drag = useDraggable({
     id: entry.id,
     disabled: entry.status !== "SCHEDULED",
@@ -57,7 +60,7 @@ function Entry({
         <button
           {...drag.listeners}
           {...drag.attributes}
-          aria-label={`Move ${entry.title}`}
+          aria-label={t("calendar.move", { title: entry.title || t("common:untitled") })}
           className="touch-none float-right px-2 cursor-grab text-ink-muted"
         >
           ⠿
@@ -67,18 +70,18 @@ function Entry({
         {entry.media_asset_id && (
           <img
             loading="lazy"
-            alt="Post image"
+            alt={t("calendar.postImage")}
             className="mb-2 h-16 w-full rounded object-cover"
             src={mediaUrl(
               `/api/v1/workspaces/${workspaceId}/media/${entry.media_asset_id}/content`,
             )}
           />
         )}
-        <span className="line-clamp-2 font-medium">{entry.title}</span>
+        <span className="line-clamp-2 break-words font-medium">{entry.title || t("common:untitled")}</span>
         <span className="block text-ink-muted mt-1">
-          {entry.channel_set_name} · {entry.category}
+          {[entry.channel_set_name, entry.category && categoryLabel(entry.category)].filter(Boolean).join(" · ")}
         </span>
-        <StatusBadge status={entry.status} />
+        <StatusBadge status={entry.status} domain="content" />
       </button>
     </div>
   );
@@ -98,6 +101,7 @@ function Day({
   onSelect: (id: string) => void;
   onTime: (entry: CalendarEntry) => void;
 }) {
+  const { t } = useTranslation("automation");
   const drop = useDroppable({ id: day.toISOString() });
   return (
     <div
@@ -106,7 +110,7 @@ function Day({
       data-day={format(day, "yyyy-MM-dd")}
       className={`min-h-40 min-w-0 border p-2 space-y-2 ${drop.isOver ? "bg-accent/15" : "bg-surface-raised"}`}
     >
-      <h2 className="text-xs text-ink-muted">{format(day, "EEE d")}</h2>
+      <h2 className="text-xs text-ink-muted">{calendarDate(day, "weekday-day", tz)}</h2>
       {entries.map((e) => (
         <div key={e.id}>
           <Entry
@@ -115,9 +119,9 @@ function Day({
             onClick={() => onSelect(e.id)}
           />
           <div className="flex justify-between mt-1 text-2xs text-ink-faint">
-            <span>{dateTime(e.at, tz, "HH:mm")}</span>
+            <span>{dateTime(e.at, tz, "time")}</span>
             {e.status === "SCHEDULED" && (
-              <button onClick={() => onTime(e)}>Change time</button>
+              <button onClick={() => onTime(e)}>{t("calendar.changeTime")}</button>
             )}
           </div>
         </div>
@@ -126,6 +130,7 @@ function Day({
   );
 }
 export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("automation");
   const client = useQueryClient(),
     [anchor, setAnchor] = useState(new Date()),
     [mode, setMode] = useState<CalendarMode>("month"),
@@ -172,7 +177,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
       client.setQueryData(key, context?.previous);
       toast.error(e.message);
     },
-    onSuccess: () => toast.success("Post rescheduled"),
+    onSuccess: () => toast.success(t("calendar.rescheduled")),
     onSettled: () => {
       void client.invalidateQueries({
         predicate: (q) => q.queryKey.includes(ws),
@@ -201,46 +206,45 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Calendar"
-        description="Drag the handle to move a scheduled post. Change time works with keyboard and touch."
+        title={t("calendar.title")}
+        description={t("calendar.description")}
         actions={
           <>
-            <Button onClick={() => shift(-1)} aria-label="Previous period">
+            <Button onClick={() => shift(-1)} aria-label={t("calendar.previous")}>
               ←
             </Button>
-            <Button onClick={() => setAnchor(new Date())}>Today</Button>
-            <Button onClick={() => shift(1)} aria-label="Next period">
+            <Button onClick={() => setAnchor(new Date())}>{t("common:action.today")}</Button>
+            <Button onClick={() => shift(1)} aria-label={t("calendar.next")}>
               →
             </Button>
           </>
         }
       />
       <div className="flex flex-wrap gap-3 items-center">
-        <h2>{format(new TZDate(anchor, timezone), "MMMM yyyy")}</h2>
+        <h2>{calendarDate(anchor, mode === "day" ? "long" : "month-year", timezone)}</h2>
         <Segmented
-          ariaLabel="Calendar mode"
+          ariaLabel={t("calendar.mode")}
           value={mode}
           onChange={setMode}
-          options={[
-            { value: "month", label: "Month" },
-            { value: "week", label: "Week" },
-            { value: "day", label: "Day" },
-          ]}
+          options={(["month", "week", "day"] as const).map((value) => ({
+            value,
+            label: t(`calendar.view.${value}`),
+          }))}
         />
         <Select
-          className="w-52"
-          ariaLabel="Calendar timezone"
+          className="w-full sm:w-52"
+          ariaLabel={t("calendar.timezone")}
           value={timezone}
           onValueChange={setTz}
           options={timezoneOptions(timezone)}
         />
         <Select
-          className="w-52"
-          ariaLabel="Calendar target"
+          className="w-full sm:w-52"
+          ariaLabel={t("calendar.target")}
           value={target}
           onValueChange={setTarget}
           options={[
-            { value: "all", label: "All channel sets" },
+            { value: "all", label: t("calendar.allSets") },
             ...(sets.data ?? []).map((s) => ({ value: s.id, label: s.name })),
           ]}
         />
@@ -279,7 +283,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
       )}
       {!!query.data?.free_slots.length && (
         <Card className="p-4">
-          <h2 className="font-medium mb-2">Next free slots</h2>
+          <h2 className="font-medium mb-2">{t("calendar.freeSlots")}</h2>
           <div className="flex flex-wrap gap-2">
             {query.data.free_slots.slice(0, 12).map((s, i) => (
               <span
@@ -295,7 +299,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={!!selected}
         onOpenChange={(open) => !open && setSelected(null)}
-        title="Content Studio"
+        title={t("content:studio.name")}
         size="xl"
       >
         {selected && (
@@ -309,7 +313,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={!!moving}
         onOpenChange={(open) => !open && setMoving(null)}
-        title="Reschedule post"
+        title={t("calendar.reschedule")}
       >
         <DateTimePicker value={at} onChange={setAt} timeZone={timezone} />
         <Button
@@ -320,7 +324,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
             setMoving(null);
           }}
         >
-          Save new time
+          {t("calendar.saveTime")}
         </Button>
       </Dialog>
     </div>

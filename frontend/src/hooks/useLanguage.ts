@@ -3,7 +3,8 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { storedLanguage, type Language } from "@/i18n";
 import { applyLanguage, currentLanguage } from "@/i18n/language";
-import { endpoints, type User } from "@/lib/api";
+import { endpoints, errorText, type User } from "@/lib/api";
+import { toast } from "@/components/ui/toast";
 
 /**
  * Keeps the UI language and the user's saved preference in sync:
@@ -33,6 +34,8 @@ export function useLanguage() {
   const save = useMutation({
     mutationFn: (language: Language) => endpoints.updateMe({ language }),
     onSuccess: (user) => client.setQueryData(["me"], user),
+    // The switch already applied locally; only the account copy failed.
+    onError: (e) => toast.error(errorText(e)),
   });
   return {
     language: (i18n.language === "ru" ? "ru" : "en") as Language,

@@ -85,3 +85,36 @@ content job subsequently completed successfully: DRAFT, 644 plain-text character
 17810 input tokens, 1211 output tokens, recorded estimated cost 6.4436 RUB.
 No Telegram publication was issued. This is a live text integration check, not
 invoice reconciliation or a real Telegram verification.
+
+
+## v0.3.0 — localization release (2026-10-05)
+
+### Audit of parallel changes before localization
+
+`git log`/`git diff` since v0.2.0 showed two commits made in parallel by Codex: `94f50aa` (Timeweb agent: bounded retry without parameters the reasoning model rejects, with mocked HTTP regressions) and `5e00176` (AUDIT note on live text generation). Both were reviewed and kept. No critical regressions were found: backend tests, Ruff, frontend typecheck/lint/tests/build, Alembic and `docker compose config` were green before any localization change. A later commit `670134d "Initial commit"` on `origin/main` snapshotted work in progress from this release; history was not rewritten (no force push) and the release commit builds on it.
+
+### What changed
+
+- Backend contract only (no presentation logic): error `code`/`details` on every error response, `users.language` + `PATCH /auth/me`, Telegram login flow `error_code`/`wait_seconds`, notification parameters (also in real-time events), search result `status`, failed-publication `error_code`, no English placeholders in data. Enums, AI prompts and tone logic are unchanged.
+- Frontend: i18next with 12 namespaces × 2 languages; all pages and shared components translated; centralized labels for enums/audit/notifications/errors; `Intl` formatting; language switcher in Settings → General, header menu and sign-in page.
+- Stored English texts that predate the parameters (old notifications, knowledge import warnings, job summaries) are mapped by known patterns; anything unrecognized is shown as stored rather than hidden. Raw technical messages (Telegram/AI exception text) are shown as "technical details" next to a localized description.
+
+### Checks (local, fake providers)
+
+- Backend: 132 passed on SQLite/fakeredis and 132 passed on PostgreSQL 16 + Redis 7; Ruff passed.
+- Alembic: `bee55cb8fd0b` upgrade → check → downgrade → upgrade verified with data on PostgreSQL; `alembic check` on the Compose database reports no drift.
+- Frontend: TypeScript, ESLint (0 warnings), Vitest 42 passed (17 new language tests), production build passed.
+- Playwright against the rebuilt Compose stack (Nginx + 2 API processes + worker + scheduler + PostgreSQL + Redis + MinIO): 12/12 — the 8 existing product scenarios plus localization scenarios A (EN→RU in Settings, reload, fresh browser follows the account), B (RU→EN, reload), C (Russian UI leaves English post title/body untouched, stored data unchanged) and D (Calendar, Channels, Jobs, Costs, Settings in Russian: no English UI words, no horizontal overflow at 1280 px and 390 px).
+- An additional ad-hoc Russian sweep over a workspace with imported channels, a published post, jobs and notifications covered all 22 routes, every Settings tab and the command palette; the only English words found were fake channel titles (data). Screenshots were reviewed for clipping.
+- Static checks: every literal translation key used in code exists in both languages; en/ru key sets match (ru adds gender-specific status overrides); every Russian plural has `one/few/many/other`.
+- The local `.env` used for Compose had an empty `TELETHON_SESSION_ENCRYPTION_KEY`, which (correctly) blocks adding even a fake Telegram account; the e2e run used a scratch copy with the documented `.env.example` dev key. The repository `.env` was not modified.
+
+### Security review
+
+Workspace isolation and RBAC are unchanged (no new workspace-scoped routes). `PATCH /auth/me` changes only the caller's own language/name, validates the language literal and goes through the CSRF header guard. Error `details` contain only values the caller already had (status, counts, budget figures, retry seconds) — no SQL, stack traces or secrets. Translations are rendered as React text (no HTML injection); post previews keep the existing sanitizer. Notification metadata in real-time events contains only masked phones and ids already present in the message. No secrets were added to code, docs or logs.
+
+### Known limitations
+
+- Pydantic validation messages (`VALIDATION_ERROR`) are shown inside a localized sentence but the field-level text is English.
+- Exceptions from external services (Telegram, Timeweb) are shown as technical details in their original language.
+- AI operations' revision labels and job summaries created before this release are mapped by pattern; unusual historical rows may show the stored English text.

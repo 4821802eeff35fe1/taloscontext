@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Schedule, type ScheduleInput } from "@/lib/api";
 import {
   Button,
@@ -14,7 +15,8 @@ import {
 import { Checkbox, Select, Switch, TagInput } from "@/components/ui/forms";
 import { ConfirmDialog, Dialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
-import { dateTime, timezoneOptions } from "@/lib/format";
+import { dateTime, timezoneOptions, weekdayNames } from "@/lib/format";
+import { misfirePolicyLabel } from "@/i18n/labels";
 const defaults: ScheduleInput = {
   name: "",
   channel_set_id: null,
@@ -35,6 +37,7 @@ const defaults: ScheduleInput = {
   misfire_policy: null,
 };
 export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("automation");
   const [editing, setEditing] = useState<Schedule | null | undefined>(
       undefined,
     ),
@@ -47,11 +50,11 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Schedules"
-        description="Local time windows become persistent UTC publication times."
+        title={t("schedules.title")}
+        description={t("schedules.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
-            Create schedule
+            {t("schedules.create")}
           </Button>
         }
       />
@@ -61,17 +64,17 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
         <EmptyState
-          title="No schedules"
-          description="Define posting windows for a channel set."
+          title={t("schedules.empty.title")}
+          description={t("schedules.empty.description")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {query.data.map((s) => (
             <Card key={s.id} className="p-4 space-y-3">
-              <div className="flex justify-between">
-                <h2 className="font-medium">{s.name}</h2>
+              <div className="flex justify-between gap-2">
+                <h2 className="min-w-0 break-words font-medium">{s.name}</h2>
                 <Switch
-                  label={`Enable ${s.name}`}
+                  label={t("schedules.enable", { name: s.name })}
                   checked={s.enabled}
                   onCheckedChange={(v) =>
                     action.mutate(() => endpoints.pauseSchedule(ws, s.id, !v))
@@ -79,12 +82,12 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
                 />
               </div>
               <p className="text-sm text-ink-muted">
-                {s.channel_set_name || "Any target"} · {s.posts_per_day}{" "}
-                posts/day · {s.timezone}
+                {s.channel_set_name || t("schedules.anyTarget")} ·{" "}
+                {t("common:count.postsPerDay", { count: s.posts_per_day })} · {s.timezone}
               </p>
               <p className="text-xs">
                 {s.windows.map((w) => w.start + "–" + w.end).join(" · ")} ·{" "}
-                {s.randomize ? "Random" : "Fixed"}
+                {s.randomize ? t("schedules.random") : t("schedules.fixed")}
               </p>
               <p className="text-xs text-ink-faint">
                 {s.next_slots
@@ -92,10 +95,10 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
                   .map((at) => dateTime(at, s.timezone))
                   .join(" · ")}
               </p>
-              <div className="flex gap-2">
-                <Button onClick={() => setEditing(s)}>Edit</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => setEditing(s)}>{t("common:action.edit")}</Button>
                 <Button variant="danger" onClick={() => setRemove(s.id)}>
-                  Delete
+                  {t("common:action.delete")}
                 </Button>
               </div>
             </Card>
@@ -113,8 +116,8 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(open) => !open && setRemove(null)}
-        title="Delete this schedule?"
-        description="Existing scheduled posts keep their times."
+        title={t("schedules.deleteConfirm")}
+        description={t("schedules.deleteHint")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteSchedule(ws, remove!));
@@ -133,6 +136,7 @@ function ScheduleEditor({
   schedule: Schedule | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("automation");
   const [draft, setDraft] = useState<ScheduleInput>(schedule ?? defaults),
     [slots, setSlots] = useState<string[]>([]);
   const sets = useQuery({
@@ -147,7 +151,7 @@ function ScheduleEditor({
   const preview = useOperation(
     ws,
     async () => setSlots(await endpoints.previewSchedule(ws, draft)),
-    "Preview updated",
+    t("schedules.previewUpdated"),
   );
   const field = <K extends keyof ScheduleInput>(
     key: K,
@@ -157,7 +161,7 @@ function ScheduleEditor({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={schedule ? "Edit schedule" : "Create schedule"}
+      title={schedule ? t("schedules.editTitle") : t("schedules.create")}
       size="lg"
     >
       <form
@@ -167,7 +171,7 @@ function ScheduleEditor({
           action.mutate();
         }}
       >
-        <Field label="Name" htmlFor="schedule-name">
+        <Field label={t("schedules.name")} htmlFor="schedule-name">
           <Input
             id="schedule-name"
             value={draft.name}
@@ -176,24 +180,24 @@ function ScheduleEditor({
           />
         </Field>
         <Select
-          ariaLabel="Schedule target"
+          ariaLabel={t("schedules.target")}
           value={draft.channel_set_id ?? "none"}
           onValueChange={(v) =>
             field("channel_set_id", v === "none" ? null : v)
           }
           options={[
-            { value: "none", label: "Any channel set" },
+            { value: "none", label: t("schedules.anySet") },
             ...(sets.data ?? []).map((s) => ({ value: s.id, label: s.name })),
           ]}
         />
         <Select
-          ariaLabel="Schedule timezone"
+          ariaLabel={t("schedules.timezone")}
           value={draft.timezone}
           onValueChange={(v) => field("timezone", v)}
           options={timezoneOptions(draft.timezone)}
         />
         <div className="flex flex-wrap gap-3">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => (
+          {weekdayNames().map((d, i) => (
             <label key={d} className="flex gap-1 items-center">
               <Checkbox
                 label={d}
@@ -211,7 +215,7 @@ function ScheduleEditor({
             </label>
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {(
             [
               "posts_per_day",
@@ -219,9 +223,9 @@ function ScheduleEditor({
               "max_posts_per_day",
             ] as const
           ).map((f) => (
-            <Field label={f.replaceAll("_", " ")} key={f}>
+            <Field label={t(`schedules.field.${f}`)} key={f}>
               <Input
-                aria-label={f}
+                aria-label={t(`schedules.field.${f}`)}
                 type="number"
                 min={f === "min_interval_minutes" ? 0 : 1}
                 value={draft[f]}
@@ -230,13 +234,13 @@ function ScheduleEditor({
             </Field>
           ))}
         </div>
-        <Field label="Time windows">
+        <Field label={t("schedules.windows")}>
           {draft.windows.map((w, i) => (
             <div className="flex items-center gap-2 mb-2" key={i}>
               <Input
-                aria-label={`Window ${i + 1} start`}
+                aria-label={t("schedules.windowStart", { n: i + 1 })}
                 value={w.start}
-                placeholder="HH:MM"
+                placeholder={t("schedules.timePlaceholder")}
                 onChange={(e) =>
                   field(
                     "windows",
@@ -248,9 +252,9 @@ function ScheduleEditor({
               />
               <span>–</span>
               <Input
-                aria-label={`Window ${i + 1} end`}
+                aria-label={t("schedules.windowEnd", { n: i + 1 })}
                 value={w.end}
-                placeholder="HH:MM"
+                placeholder={t("schedules.timePlaceholder")}
                 onChange={(e) =>
                   field(
                     "windows",
@@ -261,7 +265,7 @@ function ScheduleEditor({
                 }
               />
               <Button
-                aria-label="Remove window"
+                aria-label={t("schedules.removeWindow")}
                 onClick={() =>
                   field(
                     "windows",
@@ -281,33 +285,34 @@ function ScheduleEditor({
               ])
             }
           >
-            Add window
+            {t("schedules.addWindow")}
           </Button>
         </Field>
         <label className="flex gap-2 items-center">
           <Switch
-            label="Randomized times"
+            label={t("schedules.randomized")}
             checked={draft.randomize}
             onCheckedChange={(v) => field("randomize", v)}
           />
-          Randomized inside windows
+          {t("schedules.randomizedHint")}
         </label>
-        <Field label="Categories">
+        <Field label={t("schedules.categories")}>
           <TagInput
-            ariaLabel="Schedule categories"
+            ariaLabel={t("schedules.categories")}
             value={draft.categories}
             onChange={(v) => field("categories", v)}
           />
         </Field>
-        <Field label="Excluded dates (YYYY-MM-DD)">
+        <Field label={t("schedules.excluded")}>
           <TagInput
-            ariaLabel="Excluded dates"
+            ariaLabel={t("schedules.excludedLabel")}
+            placeholder={t("schedules.excludedPlaceholder")}
             value={draft.exclude_dates}
             onChange={(v) => field("exclude_dates", v)}
           />
         </Field>
         <Select
-          ariaLabel="Misfire policy"
+          ariaLabel={t("schedules.misfire")}
           value={draft.misfire_policy ?? "default"}
           onValueChange={(v) =>
             field("misfire_policy", v === "default" ? null : v)
@@ -321,16 +326,16 @@ function ScheduleEditor({
             value,
             label:
               value === "default"
-                ? "Workspace policy"
-                : value.replaceAll("_", " "),
+                ? t("schedules.workspacePolicy")
+                : misfirePolicyLabel(value),
           }))}
         />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={() => preview.mutate()} loading={preview.isPending}>
-            Preview slots
+            {t("schedules.preview")}
           </Button>
           <Button type="submit" variant="primary" loading={action.isPending}>
-            Save schedule
+            {t("schedules.save")}
           </Button>
         </div>
         {!!slots.length && (

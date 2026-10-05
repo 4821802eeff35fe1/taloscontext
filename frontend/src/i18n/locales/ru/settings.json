@@ -1,1 +1,92 @@
-{}
+{
+  "title": "Настройки",
+  "tab": {
+    "general": "Общие",
+    "telegram": "Telegram",
+    "ai": "AI",
+    "budget": "Бюджет",
+    "storage": "Хранилище",
+    "security": "Безопасность",
+    "notifications": "Уведомления"
+  },
+  "general": {
+    "personal": "Личные настройки",
+    "language": "Язык интерфейса",
+    "languageHint": "Сохраняется в вашем аккаунте и действует на всех устройствах. Тексты постов не переводятся.",
+    "workspace": "Рабочее пространство",
+    "workspaceName": "Название пространства",
+    "timezone": "Часовой пояс пространства",
+    "misfirePolicy": "Политика для пропущенных публикаций",
+    "misfireGrace": "Допустимая задержка (минуты)",
+    "cta": "CTA: {{key}}",
+    "save": "Сохранить общие настройки"
+  },
+  "members": {
+    "title": "Участники",
+    "roleFor": "Роль для {{email}}",
+    "email": "Email участника",
+    "emailPlaceholder": "Email зарегистрированного пользователя",
+    "newRole": "Роль нового участника",
+    "add": "Добавить участника"
+  },
+  "role": {
+    "OWNER": "Владелец",
+    "ADMIN": "Администратор",
+    "EDITOR": "Редактор",
+    "APPROVER": "Согласующий",
+    "VIEWER": "Наблюдатель"
+  },
+  "budget": {
+    "daily_budget_rub": "Дневной бюджет, ₽",
+    "monthly_budget_rub": "Месячный бюджет, ₽",
+    "max_cost_per_post_rub": "Макс. стоимость поста, ₽",
+    "budget_warning_pct": "Порог предупреждения, %",
+    "save": "Сохранить бюджет"
+  },
+  "ai": {
+    "textProvider": "Провайдер текста",
+    "baseUrl": "URL агента",
+    "apiKey": "API-ключ",
+    "model": "Модель",
+    "imageProvider": "Провайдер изображений",
+    "gatewayKey": "Ключ шлюза",
+    "perMillion": "{{price}} за миллион токенов",
+    "pricing": {
+      "text_input_rub_per_m": "Текст, вход",
+      "text_output_rub_per_m": "Текст, выход",
+      "image_input_rub_per_m": "Изображения, вход",
+      "image_output_rub_per_m": "Изображения, выход"
+    }
+  },
+  "telegram": {
+    "api_id_configured": "API ID настроен",
+    "api_hash_configured": "API hash настроен",
+    "session_encryption_configured": "Шифрование сессий настроено",
+    "provider_is_fake": "Тестовый провайдер"
+  },
+  "storage": {
+    "endpoint": "Адрес",
+    "bucket": "Бакет",
+    "accessKey": "Ключ доступа"
+  },
+  "security": {
+    "lifetime_one": "Срок жизни сессии: {{count}} час",
+    "lifetime_few": "Срок жизни сессии: {{count}} часа",
+    "lifetime_many": "Срок жизни сессии: {{count}} часов",
+    "lifetime_other": "Срок жизни сессии: {{count}} часа",
+    "idle_one": "тайм-аут бездействия: {{count}} час",
+    "idle_few": "тайм-аут бездействия: {{count}} часа",
+    "idle_many": "тайм-аут бездействия: {{count}} часов",
+    "idle_other": "тайм-аут бездействия: {{count}} часа",
+    "revokeOthers": "Завершить другие сеансы",
+    "revokeConfirm": "Завершить все другие сеансы?",
+    "current": "Текущий сеанс",
+    "session": "Сеанс",
+    "lastActive": "Последняя активность: {{time}}"
+  },
+  "notifications": {
+    "muted": "Отключённые уведомления",
+    "mutedHint": "Уведомления отмеченных типов не создаются в этом пространстве.",
+    "save": "Сохранить настройки уведомлений"
+  }
+}

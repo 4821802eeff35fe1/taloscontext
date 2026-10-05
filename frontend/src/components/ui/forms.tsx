@@ -8,7 +8,6 @@ import {
   addMonths,
   endOfMonth,
   endOfWeek,
-  format,
   isSameDay,
   isSameMonth,
   startOfMonth,
@@ -23,6 +22,8 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { calendarDate, dateTime, weekdayNames } from "@/lib/format";
 import { Popover } from "./overlays";
 import { Button, cn } from "./primitives";
 
@@ -39,7 +40,7 @@ export function Select({
   value,
   onValueChange,
   options,
-  placeholder = "Select…",
+  placeholder,
   ariaLabel,
   className,
   disabled,
@@ -69,7 +70,7 @@ export function Select({
         )}
       >
         <span className="truncate">
-          <RadixSelect.Value placeholder={placeholder} />
+          <RadixSelect.Value placeholder={placeholder ?? <SelectPlaceholder />} />
         </span>
         <RadixSelect.Icon>
           <ChevronDown className="h-4 w-4 shrink-0 text-ink-faint" />
@@ -183,6 +184,8 @@ export function Tabs({
   children?: ReactNode;
   className?: string;
 }) {
+  const { t } = useTranslation();
+  const tabsLabel = t("tabs.sections");
   return (
     <RadixTabs.Root
       value={value}
@@ -191,7 +194,7 @@ export function Tabs({
     >
       <RadixTabs.List
         className="flex gap-1 overflow-x-auto border-b border-surface-border"
-        aria-label="Sections"
+        aria-label={tabsLabel}
       >
         {tabs.map((t) => (
           <RadixTabs.Trigger
@@ -268,7 +271,7 @@ export function DateTimePicker({
   onChange,
   timeZone = "UTC",
   minDate,
-  label = "Date and time",
+  label,
 }: {
   value: string | null;
   onChange: (iso: string) => void;
@@ -276,6 +279,7 @@ export function DateTimePicker({
   minDate?: Date;
   label?: string;
 }) {
+  const { t } = useTranslation();
   const current = useMemo(
     () => new TZDate(value ? new Date(value) : nextRoundedHour(), timeZone),
     [value, timeZone],
@@ -301,14 +305,12 @@ export function DateTimePicker({
       trigger={
         <button
           type="button"
-          aria-label={label}
+          aria-label={label ?? t("picker.dateTime")}
           className="input flex items-center gap-2 text-left"
         >
           <CalendarIcon className="h-4 w-4 text-ink-faint" aria-hidden />
           <span className={value ? "text-ink" : "text-ink-faint"}>
-            {value
-              ? format(current, "EEE d MMM yyyy, HH:mm")
-              : "Pick date and time"}
+            {value ? dateTime(value, timeZone, "full") : t("picker.pick")}
           </span>
           <span className="ml-auto text-2xs text-ink-faint">{timeZone}</span>
         </button>
@@ -318,25 +320,25 @@ export function DateTimePicker({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Previous month"
+          aria-label={t("picker.previousMonth")}
           onClick={() => setMonth(addMonths(month, -1))}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm font-medium">
-          {format(month, "LLLL yyyy")}
+          {calendarDate(month, "month-year", timeZone)}
         </span>
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Next month"
+          aria-label={t("picker.nextMonth")}
           onClick={() => setMonth(addMonths(month, 1))}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
       <div className="grid grid-cols-7 gap-0.5 text-center text-2xs text-ink-faint">
-        {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
+        {weekdayNames().map((d) => (
           <div key={d} className="py-1">
             {d}
           </div>
@@ -345,7 +347,7 @@ export function DateTimePicker({
       <div
         className="grid grid-cols-7 gap-0.5"
         role="grid"
-        aria-label="Calendar"
+        aria-label={t("picker.calendar")}
       >
         {days.map((d) => {
           const disabled = !!minDate && d < startOfDay(minDate);
@@ -356,7 +358,7 @@ export function DateTimePicker({
               type="button"
               disabled={disabled}
               aria-pressed={selected}
-              aria-label={format(d, "d MMMM yyyy")}
+              aria-label={calendarDate(d, "long", timeZone)}
               onClick={() =>
                 emit(
                   d.getFullYear(),
@@ -382,7 +384,7 @@ export function DateTimePicker({
       </div>
       <div className="mt-3 flex items-center gap-2">
         <Select
-          ariaLabel="Hour"
+          ariaLabel={t("picker.hour")}
           value={String(current.getHours())}
           options={HOURS}
           className="w-20"
@@ -398,7 +400,7 @@ export function DateTimePicker({
         />
         <span className="text-ink-faint">:</span>
         <Select
-          ariaLabel="Minute"
+          ariaLabel={t("picker.minute")}
           value={String(current.getMinutes() - (current.getMinutes() % 5))}
           options={MINUTES}
           className="w-20"
@@ -418,7 +420,7 @@ export function DateTimePicker({
           className="ml-auto"
           onClick={() => setOpen(false)}
         >
-          Done
+          {t("action.done")}
         </Button>
       </div>
     </Popover>
@@ -441,7 +443,7 @@ function nextRoundedHour() {
 export function TagInput({
   value,
   onChange,
-  placeholder = "Type and press Enter",
+  placeholder,
   ariaLabel,
 }: {
   value: string[];
@@ -449,6 +451,7 @@ export function TagInput({
   placeholder?: string;
   ariaLabel: string;
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState("");
   const add = () => {
     const parts = draft
@@ -477,7 +480,7 @@ export function TagInput({
           {tag}
           <button
             type="button"
-            aria-label={`Remove ${tag}`}
+            aria-label={t("tags.remove", { tag })}
             onClick={() => onChange(value.filter((t) => t !== tag))}
             className="text-ink-faint hover:text-ink"
           >
@@ -491,9 +494,14 @@ export function TagInput({
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKey}
         onBlur={add}
-        placeholder={value.length ? "" : placeholder}
+        placeholder={value.length ? "" : (placeholder ?? t("tags.placeholder"))}
         className="min-w-[120px] flex-1 bg-transparent py-0.5 text-sm text-ink outline-none placeholder:text-ink-faint"
       />
     </div>
   );
+}
+
+function SelectPlaceholder() {
+  const { t } = useTranslation();
+  return <>{t("select.placeholder")}</>;
 }

@@ -1,5 +1,7 @@
 import clsx from "clsx";
 import { AlertTriangle, Loader2, type LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { errorText } from "@/lib/api";
 import {
   forwardRef,
   type ButtonHTMLAttributes,
@@ -207,11 +209,12 @@ export function SkeletonRows({
   rows?: number;
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className={cn("space-y-2 p-4", className)}
       aria-busy="true"
-      aria-label="Loading"
+      aria-label={t("state.loading")}
     >
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton key={i} className="h-10 w-full" />
@@ -221,10 +224,11 @@ export function SkeletonRows({
 }
 
 export function Spinner({ className }: { className?: string }) {
+  const { t } = useTranslation();
   return (
     <Loader2
       className={cn("h-4 w-4 animate-spin text-ink-muted", className)}
-      aria-label="Loading"
+      aria-label={t("state.loading")}
     />
   );
 }
@@ -270,8 +274,8 @@ export function ErrorState({
   error: unknown;
   onRetry?: () => void;
 }) {
-  const message =
-    error instanceof Error ? error.message : "The request failed.";
+  const { t } = useTranslation();
+  const message = errorText(error);
   return (
     <div
       role="alert"
@@ -281,7 +285,7 @@ export function ErrorState({
       <p className="text-sm text-ink">{message}</p>
       {onRetry && (
         <Button size="sm" onClick={onRetry}>
-          Try again
+          {t("action.tryAgain")}
         </Button>
       )}
     </div>

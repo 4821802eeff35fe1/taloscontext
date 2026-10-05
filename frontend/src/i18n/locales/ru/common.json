@@ -336,5 +336,24 @@
     "content": {
       "FAILED": "Ошибка"
     }
+  },
+  "picker": {
+    "dateTime": "Дата и время",
+    "pick": "Выберите дату и время",
+    "previousMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц",
+    "calendar": "Календарь",
+    "hour": "Час",
+    "minute": "Минута"
+  },
+  "tags": {
+    "remove": "Удалить {{tag}}",
+    "placeholder": "Введите и нажмите Enter"
+  },
+  "tabs": {
+    "sections": "Разделы"
+  },
+  "select": {
+    "placeholder": "Выберите…"
   }
 }
