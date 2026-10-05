@@ -89,3 +89,9 @@ backend/.venv/bin/python scripts/verify_compose.py
 This script creates its own test workspace and restarts backend/worker/scheduler. Test databases must be disposable: the backend suite recreates its test schema. See [TESTING.md](TESTING.md).
 
 See [AUDIT.md](AUDIT.md) for evidence and remaining limits, [DEPLOYMENT.md](DEPLOYMENT.md) for production setup, and [ARCHITECTURE.md](ARCHITECTURE.md), [TELEGRAM.md](TELEGRAM.md), [AI.md](AI.md), [SECURITY.md](SECURITY.md), [API.md](API.md), [DATABASE.md](DATABASE.md).
+
+## User documentation
+
+- [Быстрый старт](docs/QUICK_START_RU.md) — первый запуск и первый пост за 5–10 минут.
+- [Руководство пользователя](docs/USER_MANUAL_RU.md) — полное русскоязычное руководство по Web-панели.
+- [Шпаргалка](docs/CHEATSHEET_RU.md) — статусы, основные действия и troubleshooting на каждый день.
