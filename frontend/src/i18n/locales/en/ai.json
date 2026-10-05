@@ -21,7 +21,17 @@
     "baseDescriptionAria": "Knowledge base description",
     "deleteBase": "Delete this knowledge base?",
     "deleteBaseDescription": "Its documents remain available without a base.",
-    "deleteDocument": "Delete this document?"
+    "deleteDocument": "Delete this document?",
+    "kind": {
+      "FACT": "Fact",
+      "CONTACT": "Contact",
+      "STYLE_EXAMPLE_GOOD": "Good style example",
+      "STYLE_EXAMPLE_BAD": "Bad style example",
+      "HISTORICAL_POST": "Historical post",
+      "RULE": "Rule",
+      "PROHIBITED_CLAIM": "Prohibited claim",
+      "LINK": "Link"
+    }
   },
   "tone": {
     "title": "Tone of voice",
@@ -45,7 +55,11 @@
     "telegramChannelAria": "Telegram channel",
     "sourceUrlAria": "Source URL",
     "fetchInterval": "Fetch interval (minutes)",
-    "fetchIntervalAria": "Fetch interval"
+    "fetchIntervalAria": "Fetch interval",
+    "enable": "Enable {{name}}",
+    "summary": "{{newCount}} new / {{totalCount}} total · Every {{minutes}} min",
+    "lastFetch": "Last fetch: {{value}}",
+    "success": "Success: {{value}}"
   },
   "ideas": {
     "title": "Ideas inbox",
