@@ -92,5 +92,21 @@
     "RESCHEDULE_NEXT_SLOT": {
       "label": "Перенести на следующий слот"
     }
+  },
+  "series": {
+    "title": "Серии",
+    "description": "Планируйте последовательность постов с общим контекстом и тоном.",
+    "emptyTitle": "Серий пока нет",
+    "progressAria": "Прогресс серии",
+    "edit": "Изменить",
+    "viewParts": "Части серии",
+    "deleteTitle": "Удалить эту серию?",
+    "dialogTitle": "Серия",
+    "target": "Цель",
+    "tone": "Тон",
+    "schedule": "Расписание",
+    "nonePrefix": "Без",
+    "plannedTopics": "Запланированные темы (по одной на строку)",
+    "plannedTopicsAria": "Запланированные темы"
   }
 }
