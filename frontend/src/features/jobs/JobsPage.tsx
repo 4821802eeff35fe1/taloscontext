@@ -14,6 +14,7 @@ import {
 import { Select } from "@/components/ui/forms";
 import { Dialog, ConfirmDialog } from "@/components/ui/overlays";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { jobTypeLabel, statusLabel } from "@/i18n/labels";
 import { useOperation } from "@/hooks/useOperations";
 import { dateTime, duration } from "@/lib/format";
 export function JobSummary({ job }: { job: Job }) {
@@ -21,11 +22,11 @@ export function JobSummary({ job }: { job: Job }) {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap justify-between gap-2">
-        <span>{job.payload_summary || job.job_type}</span>
+        <span>{job.payload_summary || jobTypeLabel(job.job_type)}</span>
         <StatusBadge status={job.status} />
       </div>
       <p className="text-xs text-ink-muted">
-        {job.job_type} · Attempt {job.attempt} / {job.max_attempts} ·{" "}
+        {jobTypeLabel(job.job_type)} · {t("jobs.attempt")} {job.attempt} / {job.max_attempts} ·{" "}
         {duration(job.duration_ms)}
       </p>
       <progress
@@ -120,7 +121,7 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
           ].map((value) => ({
             value,
             label:
-              value === "all" ? "All operations" : value.replaceAll("_", " "),
+              value === "all" ? t("jobs.allOperations") : jobTypeLabel(value),
           }))}
         />
       </div>
@@ -199,7 +200,7 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
               <h3>{t("jobs.attempts")}</h3>
               {detail.data.attempts.map((a, i) => (
                 <div key={i} className="border-t py-2 text-xs">
-                  #{a.attempt_number} · {a.status} · {duration(a.duration_ms)} ·{" "}
+                  #{a.attempt_number} · {statusLabel(a.status, "job")} · {duration(a.duration_ms)} ·{" "}
                   {a.error}
                 </div>
               ))}
