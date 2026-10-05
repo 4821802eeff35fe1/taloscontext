@@ -21,7 +21,17 @@
     "baseDescriptionAria": "Описание базы знаний",
     "deleteBase": "Удалить эту базу знаний?",
     "deleteBaseDescription": "Её документы останутся доступны без привязки к базе.",
-    "deleteDocument": "Удалить этот документ?"
+    "deleteDocument": "Удалить этот документ?",
+    "kind": {
+      "FACT": "Факт",
+      "CONTACT": "Контакт",
+      "STYLE_EXAMPLE_GOOD": "Хороший пример стиля",
+      "STYLE_EXAMPLE_BAD": "Плохой пример стиля",
+      "HISTORICAL_POST": "Исторический пост",
+      "RULE": "Правило",
+      "PROHIBITED_CLAIM": "Запрещённое утверждение",
+      "LINK": "Ссылка"
+    }
   },
   "tone": {
     "title": "Тон и стиль",
@@ -45,7 +55,11 @@
     "telegramChannelAria": "Telegram-канал",
     "sourceUrlAria": "URL источника",
     "fetchInterval": "Интервал обновления (минуты)",
-    "fetchIntervalAria": "Интервал обновления"
+    "fetchIntervalAria": "Интервал обновления",
+    "enable": "Включить {{name}}",
+    "summary": "{{newCount}} новых / {{totalCount}} всего · Каждые {{minutes}} мин.",
+    "lastFetch": "Последняя загрузка: {{value}}",
+    "success": "Успешно: {{value}}"
   },
   "ideas": {
     "title": "Входящие идеи",
