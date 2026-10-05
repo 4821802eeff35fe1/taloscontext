@@ -1,1 +1,26 @@
-{}
+{
+  "audit": {
+    "title": "Audit log",
+    "description": "Who changed what and when.",
+    "search": "Search audit…",
+    "searchAria": "Search audit",
+    "allActions": "All actions",
+    "allUsers": "All users",
+    "fromAria": "Audit from date",
+    "fromPlaceholder": "From YYYY-MM-DD",
+    "untilAria": "Audit until date",
+    "untilPlaceholder": "Until YYYY-MM-DD",
+    "empty": "No matching events"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "all": "All",
+    "unread": "Unread",
+    "filterAria": "Notification filter",
+    "empty": "You're all caught up"
+  },
+  "yes": "Yes",
+  "no": "No",
+  "currentSession": "Current session",
+  "session": "Session"
+}
