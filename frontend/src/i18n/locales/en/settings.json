@@ -1,1 +1,23 @@
-{}
+{
+  "title": "Settings",
+  "workspaceName": "Workspace name",
+  "workspaceNameAria": "Workspace name",
+  "misfireGrace": "Misfire grace (minutes)",
+  "members": "Members",
+  "memberEmailAria": "Member email",
+  "memberEmailPlaceholder": "Existing user's email",
+  "mutedKinds": "Muted notification types (one per line)",
+  "mutedKindsAria": "Muted notification types",
+  "revokeOthers": "Sign out all other sessions?",
+  "newMemberRoleAria": "New member role",
+  "defaultMisfireAria": "Default misfire policy",
+  "role": {
+    "OWNER": "Owner",
+    "ADMIN": "Admin",
+    "EDITOR": "Editor",
+    "APPROVER": "Approver",
+    "VIEWER": "Viewer"
+  },
+  "workspaceTimezoneAria": "Workspace timezone",
+  "roleFor": "Role for {{email}}"
+}

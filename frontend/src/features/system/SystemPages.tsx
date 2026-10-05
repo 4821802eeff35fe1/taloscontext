@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Role, type Settings } from "@/lib/api";
 import {
   Button,
@@ -16,7 +17,9 @@ import { Select, Tabs } from "@/components/ui/forms";
 import { ConfirmDialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
 import { dateTime, timezoneOptions } from "@/lib/format";
+import { auditActionLabel, entityLabel, misfirePolicyLabel, notificationText, roleLabel } from "@/i18n/labels";
 export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("system");
   const [q, setQ] = useState(""),
     [action, setAction] = useState("all"),
     [actor, setActor] = useState("all"),
@@ -44,35 +47,35 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
   });
   return (
     <div className="space-y-4">
-      <PageHeader title="Audit log" description="Who changed what and when." />
+      <PageHeader title={t("audit.title")} description={t("audit.description")} />
       <div className="flex flex-wrap gap-2">
         <Input
-          aria-label="Search audit"
-          placeholder="Search audit…"
+          aria-label={t("audit.searchAria")}
+          placeholder={t("audit.search")}
           className="max-w-xs"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
         <Select
           className="w-60"
-          ariaLabel="Audit action"
+          ariaLabel={t("audit.actionAria")}
           value={action}
           onValueChange={setAction}
           options={[
-            { value: "all", label: "All actions" },
+            { value: "all", label: t("audit.allActions") },
             ...(query.data?.pages[0].actions ?? []).map((value) => ({
               value,
-              label: value,
+              label: auditActionLabel(value),
             })),
           ]}
         />
         <Select
           className="w-52"
-          ariaLabel="Audit actor"
+          ariaLabel={t("audit.actorAria")}
           value={actor}
           onValueChange={setActor}
           options={[
-            { value: "all", label: "All users" },
+            { value: "all", label: t("audit.allUsers") },
             ...(members.data ?? []).map((m) => ({
               value: m.user_id,
               label: m.full_name || m.email,
@@ -81,7 +84,7 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
         />
         <Select
           className="w-44"
-          ariaLabel="Audit entity"
+          ariaLabel={t("audit.entityAria")}
           value={entity}
           onValueChange={setEntity}
           options={[
@@ -98,19 +101,19 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
             "tone",
           ].map((value) => ({
             value,
-            label: value === "all" ? "All entities" : value,
+            label: value === "all" ? t("audit.allEntities") : entityLabel(value),
           }))}
         />
         <Input
-          aria-label="Audit from date"
-          placeholder="From YYYY-MM-DD"
+          aria-label={t("audit.fromAria")}
+          placeholder={t("audit.fromPlaceholder")}
           className="w-44"
           value={since}
           onChange={(e) => setSince(e.target.value)}
         />
         <Input
-          aria-label="Audit until date"
-          placeholder="Until YYYY-MM-DD"
+          aria-label={t("audit.untilAria")}
+          placeholder={t("audit.untilPlaceholder")}
           className="w-44"
           value={until}
           onChange={(e) => setUntil(e.target.value)}
@@ -122,7 +125,7 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
         ) : query.isError ? (
           <ErrorState error={query.error} />
         ) : !query.data.pages[0].items.length ? (
-          <EmptyState title="No matching events" />
+          <EmptyState title={t("audit.empty")} />
         ) : (
           query.data.pages
             .flatMap((p) => p.items)
@@ -130,7 +133,7 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
               <details key={e.id} className="border-b p-4">
                 <summary className="cursor-pointer flex flex-wrap justify-between gap-2">
                   <span>
-                    {e.actor_name} · {e.action}
+                    {e.actor_name} · {auditActionLabel(e.action)}
                   </span>
                   <span className="text-xs text-ink-muted">
                     {dateTime(e.created_at)}
@@ -159,6 +162,7 @@ export function NotificationsPage({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useTranslation("system");
   const [unread, setUnread] = useState("all");
   const query = useQuery({
     queryKey: ["notifications", ws, unread],
@@ -169,7 +173,7 @@ export function NotificationsPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Notifications"
+        title={t("notifications.title")}
         actions={
           <Button
             onClick={() =>
@@ -182,12 +186,12 @@ export function NotificationsPage({
       />
       <Select
         className="w-44"
-        ariaLabel="Notification filter"
+        ariaLabel={t("notifications.filterAria")}
         value={unread}
         onValueChange={setUnread}
         options={[
-          { value: "all", label: "All" },
-          { value: "unread", label: "Unread" },
+          { value: "all", label: t("notifications.all") },
+          { value: "unread", label: t("notifications.unread") },
         ]}
       />
       <Card>
@@ -196,7 +200,7 @@ export function NotificationsPage({
         ) : query.isError ? (
           <ErrorState error={query.error} />
         ) : !query.data.items.length ? (
-          <EmptyState title="You're all caught up" />
+          <EmptyState title={t("notifications.empty")} />
         ) : (
           query.data.items.map((n) => (
             <div
@@ -206,10 +210,10 @@ export function NotificationsPage({
               <div>
                 <p>
                   {!n.read && "● "}
-                  {n.message}
+                  {notificationText(n)}
                 </p>
                 <p className="text-xs text-ink-faint mt-1">
-                  {n.kind} · {dateTime(n.created_at)}
+                  {dateTime(n.created_at)}
                 </p>
               </div>
               {!n.read && (
@@ -245,6 +249,8 @@ function SettingsEditor({
   ws: string;
   settings: Settings;
 }) {
+  const { t } = useTranslation("settings");
+  const { t: ts } = useTranslation("system");
   const [tab, setTab] = useState("general"),
     [general, setGeneral] = useState(s.general),
     [budget, setBudget] = useState(s.budget),
@@ -266,7 +272,7 @@ function SettingsEditor({
   const action = useOperation(ws, (fn: () => Promise<unknown>) => fn());
   return (
     <div className="space-y-4">
-      <PageHeader title="Settings" />
+      <PageHeader title={t("title")} />
       <Tabs
         value={tab}
         onValueChange={setTab}
@@ -286,9 +292,9 @@ function SettingsEditor({
       <Card className="p-5 max-w-3xl space-y-4">
         {tab === "general" && (
           <>
-            <Field label="Workspace name">
+            <Field label={t("workspaceName")}>
               <Input
-                aria-label="Workspace name"
+                aria-label={t("workspaceNameAria")}
                 value={general.workspace_name}
                 onChange={(e) =>
                   setGeneral({ ...general, workspace_name: e.target.value })
@@ -296,13 +302,13 @@ function SettingsEditor({
               />
             </Field>
             <Select
-              ariaLabel="Workspace timezone"
+              ariaLabel={t("workspaceTimezoneAria")}
               value={general.timezone}
               onValueChange={(timezone) => setGeneral({ ...general, timezone })}
               options={timezoneOptions(general.timezone)}
             />
             <Select
-              ariaLabel="Default misfire policy"
+              ariaLabel={t("defaultMisfireAria")}
               value={general.misfire_policy}
               onValueChange={(misfire_policy) =>
                 setGeneral({ ...general, misfire_policy })
@@ -311,9 +317,9 @@ function SettingsEditor({
                 "SKIP",
                 "PUBLISH_IMMEDIATELY",
                 "RESCHEDULE_NEXT_SLOT",
-              ].map((value) => ({ value, label: value.replaceAll("_", " ") }))}
+              ].map((value) => ({ value, label: misfirePolicyLabel(value) }))}
             />
-            <Field label="Misfire grace (minutes)">
+            <Field label={t("misfireGrace")}>
               <Input
                 type="number"
                 min={1}
@@ -354,7 +360,7 @@ function SettingsEditor({
             >
               Save general settings
             </Button>
-            <h2 className="pt-4 font-medium">Members</h2>
+            <h2 className="pt-4 font-medium">{t("members")}</h2>
             {members.data?.map((m) => (
               <div
                 key={m.user_id}
@@ -362,7 +368,7 @@ function SettingsEditor({
               >
                 <span className="flex-1">{m.full_name || m.email}</span>
                 <Select
-                  ariaLabel={`Role for ${m.email}`}
+                  ariaLabel={t("roleFor", { email: m.email })}
                   value={m.role}
                   onValueChange={(v) =>
                     action.mutate(() =>
@@ -376,26 +382,26 @@ function SettingsEditor({
                     "EDITOR",
                     "APPROVER",
                     "VIEWER",
-                  ].map((value) => ({ value, label: value }))}
+                  ].map((value) => ({ value, label: roleLabel(value) }))}
                 />
               </div>
             ))}
             <div className="flex flex-wrap gap-2">
               <Input
-                aria-label="Member email"
+                aria-label={t("memberEmailAria")}
                 className="max-w-xs"
                 type="email"
-                placeholder="Existing user's email"
+                placeholder={t("memberEmailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
               <Select
-                ariaLabel="New member role"
+                ariaLabel={t("newMemberRoleAria")}
                 value={role}
                 onValueChange={(v) => setRole(v as Role)}
                 className="w-40"
                 options={["ADMIN", "EDITOR", "APPROVER", "VIEWER"].map(
-                  (value) => ({ value, label: value }),
+                  (value) => ({ value, label: roleLabel(value) }),
                 )}
               />
               <Button
@@ -463,7 +469,7 @@ function SettingsEditor({
           <>
             {Object.entries(s.telegram).map(([k, v]) => (
               <p key={k}>
-                {k.replaceAll("_", " ")}: {v ? "Yes" : "No"}
+                {k.replaceAll("_", " ")}: {v ? ts("yes") : ts("no")}
               </p>
             ))}
           </>
@@ -488,7 +494,7 @@ function SettingsEditor({
             {sessions.data?.map((row) => (
               <div className="border-t pt-3 text-sm" key={row.id}>
                 <p>
-                  {row.current ? "Current session" : "Session"} ·{" "}
+                  {row.current ? ts("currentSession") : ts("session")} ·{" "}
                   {row.ip_address}
                 </p>
                 <p className="text-xs text-ink-muted break-all">
@@ -502,11 +508,11 @@ function SettingsEditor({
         {tab === "notifications" && (
           <>
             <Field
-              label="Muted notification types (one per line)"
+              label={t("mutedKinds")}
               hint="post.published, post.failed, budget.warning, budget.exceeded, approval.required"
             >
               <Textarea
-                aria-label="Muted notification types"
+                aria-label={t("mutedKindsAria")}
                 value={muted}
                 onChange={(e) => setMuted(e.target.value)}
               />
@@ -532,7 +538,7 @@ function SettingsEditor({
       <ConfirmDialog
         open={revoke}
         onOpenChange={setRevoke}
-        title="Sign out all other sessions?"
+        title={t("revokeOthers")}
         onConfirm={() => {
           action.mutate(async () => {
             await endpoints.revokeOtherSessions();

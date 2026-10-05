@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Job } from "@/lib/api";
 import {
   Card,
@@ -13,24 +14,26 @@ import {
 import { Select } from "@/components/ui/forms";
 import { Dialog, ConfirmDialog } from "@/components/ui/overlays";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { jobTypeLabel, statusLabel } from "@/i18n/labels";
 import { useOperation } from "@/hooks/useOperations";
 import { dateTime, duration } from "@/lib/format";
 export function JobSummary({ job }: { job: Job }) {
+  const { t } = useTranslation("automation");
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap justify-between gap-2">
-        <span>{job.payload_summary || job.job_type}</span>
+        <span>{job.payload_summary || jobTypeLabel(job.job_type)}</span>
         <StatusBadge status={job.status} />
       </div>
       <p className="text-xs text-ink-muted">
-        {job.job_type} · Attempt {job.attempt} / {job.max_attempts} ·{" "}
+        {jobTypeLabel(job.job_type)} · {t("jobs.attempt")} {job.attempt} / {job.max_attempts} ·{" "}
         {duration(job.duration_ms)}
       </p>
       <progress
         className="w-full h-1 accent-accent"
         value={job.progress}
         max={100}
-        aria-label="Job progress"
+        aria-label={t("jobs.progressAria")}
       />
       {job.error_message && (
         <p className="text-xs text-danger">
@@ -41,6 +44,7 @@ export function JobSummary({ job }: { job: Job }) {
   );
 }
 export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("automation");
   const [q, setQ] = useState(""),
     [status, setStatus] = useState("all"),
     [type, setType] = useState("all"),
@@ -69,20 +73,20 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Jobs"
-        description="Persistent background operations and every delivery attempt."
+        title={t("jobs.title")}
+        description={t("jobs.description")}
       />
       <div className="flex flex-wrap gap-2">
         <Input
           className="max-w-xs"
-          placeholder="Search jobs…"
-          aria-label="Search jobs"
+          placeholder={t("jobs.search")}
+          aria-label={t("jobs.searchAria")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
         <Select
           className="w-44"
-          ariaLabel="Job status"
+          ariaLabel={t("jobs.statusAria")}
           value={status}
           onValueChange={setStatus}
           options={[
@@ -95,12 +99,12 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
             "CANCELLED",
           ].map((value) => ({
             value,
-            label: value === "all" ? "All statuses" : value,
+            label: value === "all" ? t("jobs.allStatuses") : statusLabel(value, "job"),
           }))}
         />
         <Select
           className="w-64"
-          ariaLabel="Job type"
+          ariaLabel={t("jobs.typeAria")}
           value={type}
           onValueChange={setType}
           options={[
@@ -117,7 +121,7 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
           ].map((value) => ({
             value,
             label:
-              value === "all" ? "All operations" : value.replaceAll("_", " "),
+              value === "all" ? t("jobs.allOperations") : jobTypeLabel(value),
           }))}
         />
       </div>
@@ -128,8 +132,8 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
           <ErrorState error={jobs.error} onRetry={() => void jobs.refetch()} />
         ) : !jobs.data.pages[0].items.length ? (
           <EmptyState
-            title="No matching jobs"
-            description="Generate or publish a post to see operations here."
+            title={t("jobs.emptyTitle")}
+            description={t("jobs.emptyDescription")}
           />
         ) : (
           jobs.data.pages
@@ -153,7 +157,7 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={!!selected}
         onOpenChange={(open) => !open && setSelected(null)}
-        title="Job details"
+        title={t("jobs.details")}
         size="lg"
       >
         {detail.isPending ? (
@@ -193,10 +197,10 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
               <pre className="overflow-auto text-xs">
                 {JSON.stringify(detail.data.metadata, null, 2)}
               </pre>
-              <h3>Attempts</h3>
+              <h3>{t("jobs.attempts")}</h3>
               {detail.data.attempts.map((a, i) => (
                 <div key={i} className="border-t py-2 text-xs">
-                  #{a.attempt_number} · {a.status} · {duration(a.duration_ms)} ·{" "}
+                  #{a.attempt_number} · {statusLabel(a.status, "job")} · {duration(a.duration_ms)} ·{" "}
                   {a.error}
                 </div>
               ))}
@@ -207,7 +211,7 @@ export function JobsPage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={cancel}
         onOpenChange={setCancel}
-        title="Cancel this job?"
+        title={t("jobs.cancelTitle")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.cancelJob(ws, selected!));

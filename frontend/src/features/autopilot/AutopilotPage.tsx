@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Autopilot } from "@/lib/api";
 import {
   Button,
@@ -15,6 +16,7 @@ import { Tooltip } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
 
 export function AutopilotPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("automation");
   const query = useQuery({
     queryKey: ["autopilot", ws],
     queryFn: () => endpoints.autopilot(ws),
@@ -22,8 +24,8 @@ export function AutopilotPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="max-w-2xl space-y-4">
       <PageHeader
-        title="Autopilot"
-        description="Plan from your editorial context and Ideas inbox under the workspace budget."
+        title={t("autopilot.title")}
+        description={t("autopilot.description")}
       />
       {query.isPending ? (
         <SkeletonRows />
@@ -36,6 +38,7 @@ export function AutopilotPage({ workspaceId: ws }: { workspaceId: string }) {
   );
 }
 function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
+  const { t } = useTranslation("automation");
   const [draft, setDraft] = useState(initial);
   const sets = useQuery({
     queryKey: ["channel-sets", ws],
@@ -65,25 +68,25 @@ function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
           save.mutate();
         }}
       >
-        <Field label="Mode">
+        <Field label={t("autopilot.mode")}>
           <Select
-            ariaLabel="Autopilot mode"
+            ariaLabel={t("autopilot.modeAria")}
             value={draft.mode}
             onValueChange={(v) => change("mode", v)}
             options={[
-              { value: "MANUAL", label: "Manual — no automatic generation" },
+              { value: "MANUAL", label: t("autopilot.modeLabel.MANUAL") },
               {
                 value: "APPROVAL",
-                label: "Approval — drafts need your approval",
+                label: t("autopilot.modeLabel.APPROVAL"),
               },
               {
                 value: "AUTOPILOT",
-                label: "Autopilot — generate, approve and schedule",
+                label: t("autopilot.modeLabel.AUTOPILOT"),
               },
             ]}
           />
         </Field>
-        <Field label="Target">
+        <Field label={t("autopilot.target")}>
           <Select
             ariaLabel="Autopilot target"
             value={draft.channel_set_id ?? "none"}
@@ -91,12 +94,12 @@ function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
               change("channel_set_id", v === "none" ? null : v)
             }
             options={[
-              { value: "none", label: "Choose channel set" },
+              { value: "none", label: t("autopilot.chooseChannelSet") },
               ...(sets.data ?? []).map((s) => ({ value: s.id, label: s.name })),
             ]}
           />
         </Field>
-        <Field label="Schedule">
+        <Field label={t("autopilot.schedule")}>
           <Select
             ariaLabel="Autopilot schedule"
             value={draft.schedule_id ?? "none"}
@@ -104,15 +107,15 @@ function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
               change("schedule_id", v === "none" ? null : v)
             }
             options={[
-              { value: "none", label: "No schedule" },
+              { value: "none", label: t("autopilot.noSchedule") },
               ...(schedules.data ?? []).map((s) => ({
                 value: s.id,
-                label: `${s.name}${s.enabled ? "" : " (paused)"}`,
+                label: `${s.name}${s.enabled ? "" : t("autopilot.pausedSuffix")}`,
               })),
             ]}
           />
         </Field>
-        <Field label="Posts per day" htmlFor="autopilot-posts">
+        <Field label={t("autopilot.postsPerDay")} htmlFor="autopilot-posts">
           <Input
             id="autopilot-posts"
             type="number"
@@ -151,7 +154,7 @@ function AutopilotEditor({ ws, initial }: { ws: string; initial: Autopilot }) {
         >
           <span className="inline-flex gap-2 items-center">
             <Switch
-              label="Generate images"
+              label={t("autopilot.generateImages")}
               checked={draft.generate_image}
               disabled={!image.data?.available}
               onCheckedChange={(v) => change("generate_image", v)}
