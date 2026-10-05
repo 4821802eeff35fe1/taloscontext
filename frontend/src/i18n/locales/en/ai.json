@@ -31,7 +31,10 @@
       "RULE": "Rule",
       "PROHIBITED_CLAIM": "Prohibited claim",
       "LINK": "Link"
-    }
+    },
+    "baseAria": "Knowledge base",
+    "uploadTypeAria": "Upload entry type",
+    "entryTypeAria": "Entry type"
   },
   "tone": {
     "title": "Tone of voice",
@@ -59,7 +62,11 @@
     "enable": "Enable {{name}}",
     "summary": "{{newCount}} new / {{totalCount}} total · Every {{minutes}} min",
     "lastFetch": "Last fetch: {{value}}",
-    "success": "Success: {{value}}"
+    "success": "Success: {{value}}",
+    "typeAria": "Source type",
+    "telegramAccountAria": "Source Telegram account",
+    "keywordsAria": "Keywords",
+    "save": "Save source"
   },
   "ideas": {
     "title": "Ideas inbox",
@@ -68,6 +75,7 @@
     "searchAria": "Search ideas",
     "emptyTitle": "No ideas here",
     "emptyDescription": "Add a source and fetch its latest stories.",
-    "statusAria": "Idea status"
+    "statusAria": "Idea status",
+    "all": "All ideas"
   }
 }
