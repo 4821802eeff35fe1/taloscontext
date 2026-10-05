@@ -103,7 +103,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
       />
       <div className="flex flex-wrap gap-2">
         <Select
-          ariaLabel="Knowledge base"
+          ariaLabel={t("knowledge.baseAria")}
           className="w-60"
           value={base}
           onValueChange={setBase}
@@ -113,7 +113,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
           ]}
         />
         <Select
-          ariaLabel="Upload entry type"
+          ariaLabel={t("knowledge.uploadTypeAria")}
           className="w-60"
           value={kind}
           onValueChange={setKind}
@@ -275,7 +275,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
             onChange={(e) => setName(e.target.value)}
           />
           <Select
-            ariaLabel="Entry type"
+            ariaLabel={t("knowledge.entryTypeAria")}
             value={kind}
             onValueChange={setKind}
             options={kinds.map((value) => ({ value, label: knowledgeKindLabel(value) }))}
