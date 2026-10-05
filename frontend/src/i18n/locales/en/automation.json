@@ -92,5 +92,21 @@
     "RESCHEDULE_NEXT_SLOT": {
       "label": "Reschedule to next slot"
     }
+  },
+  "series": {
+    "title": "Series",
+    "description": "Plan a sequence of posts with shared context and tone.",
+    "emptyTitle": "No series yet",
+    "progressAria": "Series progress",
+    "edit": "Edit",
+    "viewParts": "View parts",
+    "deleteTitle": "Delete this series?",
+    "dialogTitle": "Series",
+    "target": "Target",
+    "tone": "Tone",
+    "schedule": "Schedule",
+    "nonePrefix": "No",
+    "plannedTopics": "Planned topics (one per line)",
+    "plannedTopicsAria": "Planned topics"
   }
 }
