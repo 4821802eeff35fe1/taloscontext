@@ -29,7 +29,9 @@
     "emptyDescription": "Generate or publish a post to see operations here.",
     "details": "Job details",
     "attempts": "Attempts",
-    "cancelTitle": "Cancel this job?"
+    "cancelTitle": "Cancel this job?",
+    "attempt": "Attempt",
+    "allOperations": "All operations"
   },
   "calendar": {
     "title": "Calendar",
@@ -68,7 +70,9 @@
     "randomizedTimes": "Randomized times",
     "categories": "Categories",
     "excludedDates": "Excluded dates (YYYY-MM-DD)",
-    "misfireAria": "Misfire policy"
+    "misfireAria": "Misfire policy",
+    "workspacePolicy": "Workspace policy",
+    "excludedDatesAria": "Excluded dates"
   },
   "jobType": {
     "AI_GENERATE_POST": "Generate post",
