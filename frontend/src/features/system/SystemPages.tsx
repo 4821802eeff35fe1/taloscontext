@@ -17,6 +17,7 @@ import { Select, Tabs } from "@/components/ui/forms";
 import { ConfirmDialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
 import { dateTime, timezoneOptions } from "@/lib/format";
+import { auditActionLabel, entityLabel, misfirePolicyLabel, notificationText, roleLabel } from "@/i18n/labels";
 export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
   const { t } = useTranslation("system");
   const [q, setQ] = useState(""),
@@ -57,20 +58,20 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
         />
         <Select
           className="w-60"
-          ariaLabel="Audit action"
+          ariaLabel={t("audit.actionAria")}
           value={action}
           onValueChange={setAction}
           options={[
             { value: "all", label: t("audit.allActions") },
             ...(query.data?.pages[0].actions ?? []).map((value) => ({
               value,
-              label: value,
+              label: auditActionLabel(value),
             })),
           ]}
         />
         <Select
           className="w-52"
-          ariaLabel="Audit actor"
+          ariaLabel={t("audit.actorAria")}
           value={actor}
           onValueChange={setActor}
           options={[
@@ -83,7 +84,7 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
         />
         <Select
           className="w-44"
-          ariaLabel="Audit entity"
+          ariaLabel={t("audit.entityAria")}
           value={entity}
           onValueChange={setEntity}
           options={[
@@ -132,7 +133,7 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
               <details key={e.id} className="border-b p-4">
                 <summary className="cursor-pointer flex flex-wrap justify-between gap-2">
                   <span>
-                    {e.actor_name} · {e.action}
+                    {e.actor_name} · {auditActionLabel(e.action)}
                   </span>
                   <span className="text-xs text-ink-muted">
                     {dateTime(e.created_at)}
@@ -209,10 +210,10 @@ export function NotificationsPage({
               <div>
                 <p>
                   {!n.read && "● "}
-                  {n.message}
+                  {notificationText(n)}
                 </p>
                 <p className="text-xs text-ink-faint mt-1">
-                  {n.kind} · {dateTime(n.created_at)}
+                  {dateTime(n.created_at)}
                 </p>
               </div>
               {!n.read && (
@@ -316,7 +317,7 @@ function SettingsEditor({
                 "SKIP",
                 "PUBLISH_IMMEDIATELY",
                 "RESCHEDULE_NEXT_SLOT",
-              ].map((value) => ({ value, label: value.replaceAll("_", " ") }))}
+              ].map((value) => ({ value, label: misfirePolicyLabel(value) }))}
             />
             <Field label={t("misfireGrace")}>
               <Input
