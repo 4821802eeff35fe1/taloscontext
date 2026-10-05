@@ -1,1 +1,96 @@
-{}
+{
+  "autopilot": {
+    "title": "Autopilot",
+    "description": "Plan from your editorial context and Ideas inbox under the workspace budget.",
+    "mode": "Mode",
+    "modeAria": "Autopilot mode",
+    "target": "Target",
+    "chooseChannelSet": "Choose channel set",
+    "schedule": "Schedule",
+    "noSchedule": "No schedule",
+    "pausedSuffix": " (paused)",
+    "postsPerDay": "Posts per day",
+    "generateImages": "Generate images",
+    "budgetNote": "Generation stops when the workspace budget is exhausted. Missed schedules use your configured misfire policy.",
+    "save": "Save autopilot settings",
+    "modeLabel": {
+      "MANUAL": "Manual — no automatic generation",
+      "APPROVAL": "Approval — drafts need your approval",
+      "AUTOPILOT": "Autopilot — generate, approve and schedule"
+    }
+  },
+  "jobs": {
+    "title": "Jobs",
+    "description": "Persistent background operations and every delivery attempt.",
+    "search": "Search jobs…",
+    "searchAria": "Search jobs",
+    "progressAria": "Job progress",
+    "emptyTitle": "No matching jobs",
+    "emptyDescription": "Generate or publish a post to see operations here.",
+    "details": "Job details",
+    "attempts": "Attempts",
+    "cancelTitle": "Cancel this job?"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "description": "Drag the handle to move a scheduled post. Change time works with keyboard and touch.",
+    "changeTime": "Change time",
+    "rescheduled": "Post rescheduled",
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period",
+    "today": "Today",
+    "mode": {
+      "month": "Month",
+      "week": "Week",
+      "day": "Day"
+    },
+    "allChannelSets": "All channel sets",
+    "nextFreeSlots": "Next free slots",
+    "contentStudio": "Content Studio",
+    "reschedulePost": "Reschedule post"
+  },
+  "schedules": {
+    "title": "Schedules",
+    "description": "Local time windows become persistent UTC publication times.",
+    "emptyTitle": "No schedules",
+    "emptyDescription": "Define posting windows for a channel set.",
+    "random": "Random",
+    "fixed": "Fixed",
+    "edit": "Edit",
+    "deleteTitle": "Delete this schedule?",
+    "deleteDescription": "Existing scheduled posts keep their times.",
+    "editTitle": "Edit schedule",
+    "createTitle": "Create schedule",
+    "name": "Name",
+    "anyChannelSet": "Any channel set",
+    "timeWindows": "Time windows",
+    "removeWindow": "Remove window",
+    "randomizedTimes": "Randomized times",
+    "categories": "Categories",
+    "excludedDates": "Excluded dates (YYYY-MM-DD)",
+    "misfireAria": "Misfire policy"
+  },
+  "jobType": {
+    "AI_GENERATE_POST": "Generate post",
+    "AI_REWRITE_POST": "Rewrite post",
+    "AI_REWRITE": "Rewrite post",
+    "AI_GENERATE_IMAGE": "Generate image",
+    "TELEGRAM_PUBLISH": "Publish to Telegram",
+    "TELEGRAM_RETRY": "Retry Telegram publication",
+    "TELEGRAM_REFRESH_CHANNELS": "Refresh Telegram channels",
+    "TELEGRAM_REFRESH_METRICS": "Refresh Telegram metrics",
+    "SOURCE_FETCH": "Fetch source",
+    "AUTOPILOT_PLAN": "Plan autopilot"
+  },
+  "misfire": {
+    "SKIP": {
+      "label": "Skip"
+    },
+    "PUBLISH_IMMEDIATELY": {
+      "label": "Publish immediately"
+    },
+    "RESCHEDULE_NEXT_SLOT": {
+      "label": "Reschedule to next slot"
+    }
+  }
+}
