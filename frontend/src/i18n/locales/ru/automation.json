@@ -29,7 +29,9 @@
     "emptyDescription": "Сгенерируйте или опубликуйте пост — операции появятся здесь.",
     "details": "Детали задачи",
     "attempts": "Попытки",
-    "cancelTitle": "Отменить эту задачу?"
+    "cancelTitle": "Отменить эту задачу?",
+    "attempt": "Попытка",
+    "allOperations": "Все операции"
   },
   "calendar": {
     "title": "Календарь",
@@ -68,7 +70,9 @@
     "randomizedTimes": "Случайное время",
     "categories": "Категории",
     "excludedDates": "Исключённые даты (ГГГГ-ММ-ДД)",
-    "misfireAria": "Политика пропущенных публикаций"
+    "misfireAria": "Политика пропущенных публикаций",
+    "workspacePolicy": "Политика рабочего пространства",
+    "excludedDatesAria": "Исключённые даты"
   },
   "jobType": {
     "AI_GENERATE_POST": "Генерация поста",
