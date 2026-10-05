@@ -10,7 +10,10 @@
     "fromPlaceholder": "С ГГГГ-ММ-ДД",
     "untilAria": "Конечная дата аудита",
     "untilPlaceholder": "До ГГГГ-ММ-ДД",
-    "empty": "Событий не найдено"
+    "empty": "Событий не найдено",
+    "actionAria": "Действие аудита",
+    "actorAria": "Автор изменения",
+    "entityAria": "Сущность аудита"
   },
   "notifications": {
     "title": "Уведомления",
