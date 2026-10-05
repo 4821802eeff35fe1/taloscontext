@@ -170,13 +170,13 @@ function SourceEditor({
           onChange={(e) => setName(e.target.value)}
         />
         <Select
-          ariaLabel="Source type"
+          ariaLabel={t("sources.typeAria")}
           disabled={!!source}
           value={kind}
           onValueChange={setKind}
           options={["rss", "url", "manual", "telegram"].map((value) => ({
             value,
-            label: value,
+            label: sourceKindLabel(value),
           }))}
         />
         {kind === "telegram" ? (
@@ -188,7 +188,7 @@ function SourceEditor({
               onChange={(e) => setChannel(e.target.value)}
             />
             <Select
-              ariaLabel="Source Telegram account"
+              ariaLabel={t("sources.telegramAccountAria")}
               value={account}
               onValueChange={setAccount}
               options={(accounts.data ?? [])
@@ -216,7 +216,7 @@ function SourceEditor({
           />
         </Field>
         <TagInput
-          ariaLabel="Keywords"
+          ariaLabel={t("sources.keywordsAria")}
           value={keywords}
           onChange={setKeywords}
         />
@@ -255,7 +255,7 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
           options={["all", "NEW", "SHORTLISTED", "USED", "DISMISSED"].map(
             (value) => ({
               value,
-              label: value === "all" ? "All ideas" : value,
+              label: value === "all" ? t("ideas.all") : statusLabel(value, "idea"),
             }),
           )}
         />
