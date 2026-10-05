@@ -37,6 +37,7 @@ function Entry({
   workspaceId: string;
   onClick: () => void;
 }) {
+  const { t } = useTranslation("automation");
   const drag = useDraggable({
     id: entry.id,
     disabled: entry.status !== "SCHEDULED",
