@@ -1,4 +1,4 @@
-# Deployment — v0.2.0
+# Deployment — v0.3.0
 
 Compose provides PostgreSQL 16, Redis 7 with AOF, reference MinIO, API (two Uvicorn processes), worker, scheduler and static Nginx frontend. API migrations run before startup. Redis auth flows, queued messages and app events are shared across processes. Database rows are the source of truth for jobs/delivery.
 
@@ -25,7 +25,8 @@ See TESTING.md for the fake-provider Compose and restart acceptance procedure, a
 ## Installed server: context.talos.rest
 
 Installed on 2026-10-05, Ubuntu 24.04 at 31.207.7.181, from tested release
-commit `6370b4b`. This 1 GB RAM host uses native systemd services instead of
+commit `6370b4b`; updated the same day to v0.3.0 (commit `98c3a2f`, see AUDIT.md
+“Production Deployment — v0.3.0”). This 1 GB RAM host uses native systemd services instead of
 Docker; frontend was built locally with `VITE_API_BASE_URL=''` for same-origin API
 requests. Later uncommitted frontend edits were preserved and not deployed.
 
@@ -56,6 +57,15 @@ systemctl restart channelos-backend channelos-worker channelos-scheduler
 systemctl start channelos-backup.service
 curl http://127.0.0.1:8000/health/ready
 ```
+
+Updating (no Docker, no git checkout on the server): back up first
+(`pg_dump -Fc`, `app.env`, Nginx vhost, source, static files) into
+`/var/backups/channelos/<name>/`; copy `backend/` into `/opt/channelos/backend`
+without touching `.venv`; run `pip install --no-deps /opt/channelos/backend` **as
+the `channelos` user** (the worker imports the installed package, not the source
+tree); build the frontend locally with `VITE_API_BASE_URL=''` and copy `assets/`
+before `index.html` into `/var/www/channelos`; then restart the three services.
+The backend unit applies Alembic migrations on start.
 
 Restart backend, worker and scheduler together because the background units depend
 on the backend unit. Preserve the database, Redis files, media and environment keys
