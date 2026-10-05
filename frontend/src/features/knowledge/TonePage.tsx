@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type ToneInput, type ToneProfile } from "@/lib/api";
 import {
   Button,
@@ -33,6 +34,7 @@ const initial: ToneInput = {
   bad_examples: [],
 };
 export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("ai");
   const [editing, setEditing] = useState<ToneProfile | null | undefined>(),
     [remove, setRemove] = useState<string | null>(null);
   const query = useQuery({
@@ -43,8 +45,8 @@ export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Tone of voice"
-        description="Series → channel → workspace. Choose an explicit override in Content Studio."
+        title={t("tone.title")}
+        description={t("tone.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
             Create profile
@@ -57,8 +59,8 @@ export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
         <EmptyState
-          title="No tone profiles"
-          description="Define the voice your posts should use."
+          title={t("tone.emptyTitle")}
+          description={t("tone.emptyDescription")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -73,7 +75,7 @@ export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
                 {p.channel_count} channels · {p.series_count} series
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setEditing(p)}>Edit</Button>
+                <Button onClick={() => setEditing(p)}>{t("tone.edit")}</Button>
                 <Button
                   disabled={p.is_workspace_default}
                   onClick={() =>
@@ -101,7 +103,7 @@ export function TonePage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(open) => !open && setRemove(null)}
-        title="Delete this tone profile?"
+        title={t("tone.deleteTitle")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteTone(ws, remove!));
@@ -130,7 +132,7 @@ function ToneEditor({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title="Tone profile"
+      title={t("tone.dialogTitle")}
       size="lg"
     >
       <form
