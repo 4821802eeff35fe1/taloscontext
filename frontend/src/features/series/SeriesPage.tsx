@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Series, type SeriesInput } from "@/lib/api";
 import {
   Button,
@@ -29,6 +30,7 @@ const initial: SeriesInput = {
   planned_topics: [],
 };
 export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("automation");
   const [editing, setEditing] = useState<Series | null | undefined>(),
     [selected, setSelected] = useState<Series | null>(null),
     [remove, setRemove] = useState<string | null>(null);
@@ -40,8 +42,8 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Series"
-        description="Plan a sequence of posts with shared context and tone."
+        title={t("series.title")}
+        description={t("series.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
             Create series
@@ -53,7 +55,7 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
       ) : query.isError ? (
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
-        <EmptyState title="No series yet" />
+        <EmptyState title={t("series.emptyTitle")} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {query.data.map((s) => (
@@ -71,11 +73,11 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
                 className="w-full accent-accent"
                 max={Math.max(1, s.planned_count)}
                 value={s.published_count}
-                aria-label="Series progress"
+                aria-label={t("series.progressAria")}
               />
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setEditing(s)}>Edit</Button>
-                <Button onClick={() => setSelected(s)}>View parts</Button>
+                <Button onClick={() => setEditing(s)}>{t("series.edit")}</Button>
+                <Button onClick={() => setSelected(s)}>{t("series.viewParts")}</Button>
                 <Button
                   disabled={["PAUSED", "COMPLETED"].includes(s.status)}
                   onClick={() =>
@@ -121,7 +123,7 @@ export function SeriesPage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(open) => !open && setRemove(null)}
-        title="Delete this series?"
+        title={t("series.deleteTitle")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteSeries(ws, remove!));
@@ -159,7 +161,7 @@ function SeriesEditor({
     onClose();
   });
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title="Series" size="lg">
+    <Dialog open onOpenChange={(o) => !o && onClose()} title={t("series.dialogTitle")} size="lg">
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -192,17 +194,17 @@ function SeriesEditor({
           [
             {
               field: "channel_set_id",
-              label: "Target",
+              label: t("series.target"),
               options: sets.data?.map((s) => ({ value: s.id, label: s.name })),
             },
             {
               field: "tone_profile_id",
-              label: "Tone",
+              label: t("series.tone"),
               options: tones.data?.map((s) => ({ value: s.id, label: s.name })),
             },
             {
               field: "schedule_id",
-              label: "Schedule",
+              label: t("series.schedule"),
               options: schedules.data?.map((s) => ({
                 value: s.id,
                 label: s.name,
@@ -218,14 +220,14 @@ function SeriesEditor({
               setD({ ...d, [f.field]: v === "none" ? null : v })
             }
             options={[
-              { value: "none", label: "No " + f.label.toLowerCase() },
+              { value: "none", label: `${t("series.nonePrefix")} ${f.label.toLowerCase()}` },
               ...(f.options ?? []),
             ]}
           />
         ))}
-        <Field label="Planned topics (one per line)">
+        <Field label={t("series.plannedTopics")}>
           <Textarea
-            aria-label="Planned topics"
+            aria-label={t("series.plannedTopicsAria")}
             value={d.planned_topics.join("\n")}
             onChange={(e) =>
               setD({ ...d, planned_topics: e.target.value.split("\n") })
