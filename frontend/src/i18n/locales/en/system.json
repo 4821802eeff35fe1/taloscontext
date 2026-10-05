@@ -10,7 +10,10 @@
     "fromPlaceholder": "From YYYY-MM-DD",
     "untilAria": "Audit until date",
     "untilPlaceholder": "Until YYYY-MM-DD",
-    "empty": "No matching events"
+    "empty": "No matching events",
+    "actionAria": "Audit action",
+    "actorAria": "Audit actor",
+    "entityAria": "Audit entity"
   },
   "notifications": {
     "title": "Notifications",
