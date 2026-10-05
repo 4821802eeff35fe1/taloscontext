@@ -1,1 +1,59 @@
-{}
+{
+  "knowledge": {
+    "title": "Knowledge",
+    "description": "Current facts and rules take priority over historical posts.",
+    "addEntry": "Add entry",
+    "allBases": "All knowledge bases",
+    "search": "Search knowledge…",
+    "searchAria": "Search knowledge",
+    "enableBase": "Enable knowledge base",
+    "emptyTitle": "No knowledge yet",
+    "emptyDescription": "Upload TXT, MD, JSON, CSV, PDF or Telegram Desktop result.json.",
+    "preview": "Preview",
+    "createBase": "Create knowledge base",
+    "name": "Name",
+    "baseNameAria": "Knowledge base name",
+    "addEntryTitle": "Add knowledge entry",
+    "entryTitleAria": "Entry title",
+    "entryTitlePlaceholder": "Title",
+    "entryTextAria": "Entry text",
+    "editBase": "Edit knowledge base",
+    "baseDescriptionAria": "Knowledge base description",
+    "deleteBase": "Delete this knowledge base?",
+    "deleteBaseDescription": "Its documents remain available without a base.",
+    "deleteDocument": "Delete this document?"
+  },
+  "tone": {
+    "title": "Tone of voice",
+    "description": "Series → channel → workspace. Choose an explicit override in Content Studio.",
+    "emptyTitle": "No tone profiles",
+    "emptyDescription": "Define the voice your posts should use.",
+    "edit": "Edit",
+    "deleteTitle": "Delete this tone profile?",
+    "dialogTitle": "Tone profile"
+  },
+  "sources": {
+    "title": "Sources",
+    "description": "Fetched stories go to Ideas. Fetching never generates a post.",
+    "emptyTitle": "No sources yet",
+    "emptyDescription": "Add RSS, a website, a URL or a Telegram channel.",
+    "edit": "Edit",
+    "deleteTitle": "Delete this source?",
+    "dialogTitle": "Source",
+    "sourceNameAria": "Source name",
+    "namePlaceholder": "Name",
+    "telegramChannelAria": "Telegram channel",
+    "sourceUrlAria": "Source URL",
+    "fetchInterval": "Fetch interval (minutes)",
+    "fetchIntervalAria": "Fetch interval"
+  },
+  "ideas": {
+    "title": "Ideas inbox",
+    "description": "Review sources and turn promising stories into posts.",
+    "search": "Search ideas…",
+    "searchAria": "Search ideas",
+    "emptyTitle": "No ideas here",
+    "emptyDescription": "Add a source and fetch its latest stories.",
+    "statusAria": "Idea status"
+  }
+}
