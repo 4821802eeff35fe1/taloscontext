@@ -31,7 +31,10 @@
       "RULE": "Правило",
       "PROHIBITED_CLAIM": "Запрещённое утверждение",
       "LINK": "Ссылка"
-    }
+    },
+    "baseAria": "База знаний",
+    "uploadTypeAria": "Тип загружаемой записи",
+    "entryTypeAria": "Тип записи"
   },
   "tone": {
     "title": "Тон и стиль",
@@ -59,7 +62,11 @@
     "enable": "Включить {{name}}",
     "summary": "{{newCount}} новых / {{totalCount}} всего · Каждые {{minutes}} мин.",
     "lastFetch": "Последняя загрузка: {{value}}",
-    "success": "Успешно: {{value}}"
+    "success": "Успешно: {{value}}",
+    "typeAria": "Тип источника",
+    "telegramAccountAria": "Telegram-аккаунт источника",
+    "keywordsAria": "Ключевые слова",
+    "save": "Сохранить источник"
   },
   "ideas": {
     "title": "Входящие идеи",
@@ -68,6 +75,7 @@
     "searchAria": "Поиск идей",
     "emptyTitle": "Идей здесь пока нет",
     "emptyDescription": "Добавьте источник и загрузите его последние материалы.",
-    "statusAria": "Статус идеи"
+    "statusAria": "Статус идеи",
+    "all": "Все идеи"
   }
 }
