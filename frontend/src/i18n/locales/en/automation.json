@@ -31,7 +31,10 @@
     "attempts": "Attempts",
     "cancelTitle": "Cancel this job?",
     "attempt": "Attempt",
-    "allOperations": "All operations"
+    "allOperations": "All operations",
+    "statusAria": "Job status",
+    "typeAria": "Job type",
+    "allStatuses": "All statuses"
   },
   "calendar": {
     "title": "Calendar",
