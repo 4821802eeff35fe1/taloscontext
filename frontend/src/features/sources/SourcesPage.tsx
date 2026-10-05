@@ -118,6 +118,7 @@ function SourceEditor({
   source: Source | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("ai");
   const [name, setName] = useState(source?.name ?? ""),
     [kind, setKind] = useState(source?.kind ?? "rss"),
     [url, setUrl] = useState(String(source?.config.url ?? "")),
