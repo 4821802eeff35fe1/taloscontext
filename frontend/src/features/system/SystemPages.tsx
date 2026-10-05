@@ -101,7 +101,7 @@ export function AuditPage({ workspaceId: ws }: { workspaceId: string }) {
             "tone",
           ].map((value) => ({
             value,
-            label: value === "all" ? "All entities" : value,
+            label: value === "all" ? t("audit.allEntities") : entityLabel(value),
           }))}
         />
         <Input
@@ -302,7 +302,7 @@ function SettingsEditor({
               />
             </Field>
             <Select
-              ariaLabel="Workspace timezone"
+              ariaLabel={t("workspaceTimezoneAria")}
               value={general.timezone}
               onValueChange={(timezone) => setGeneral({ ...general, timezone })}
               options={timezoneOptions(general.timezone)}
@@ -368,7 +368,7 @@ function SettingsEditor({
               >
                 <span className="flex-1">{m.full_name || m.email}</span>
                 <Select
-                  ariaLabel={`Role for ${m.email}`}
+                  ariaLabel={t("roleFor", { email: m.email })}
                   value={m.role}
                   onValueChange={(v) =>
                     action.mutate(() =>
@@ -382,7 +382,7 @@ function SettingsEditor({
                     "EDITOR",
                     "APPROVER",
                     "VIEWER",
-                  ].map((value) => ({ value, label: value }))}
+                  ].map((value) => ({ value, label: roleLabel(value) }))}
                 />
               </div>
             ))}
@@ -401,7 +401,7 @@ function SettingsEditor({
                 onValueChange={(v) => setRole(v as Role)}
                 className="w-40"
                 options={["ADMIN", "EDITOR", "APPROVER", "VIEWER"].map(
-                  (value) => ({ value, label: value }),
+                  (value) => ({ value, label: roleLabel(value) }),
                 )}
               />
               <Button
