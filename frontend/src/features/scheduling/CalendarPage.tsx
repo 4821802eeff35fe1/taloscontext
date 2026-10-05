@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   DndContext,
   KeyboardSensor,
@@ -117,7 +118,7 @@ function Day({
           <div className="flex justify-between mt-1 text-2xs text-ink-faint">
             <span>{dateTime(e.at, tz, "HH:mm")}</span>
             {e.status === "SCHEDULED" && (
-              <button onClick={() => onTime(e)}>Change time</button>
+              <button onClick={() => onTime(e)}>{t("calendar.changeTime")}</button>
             )}
           </div>
         </div>
@@ -126,6 +127,7 @@ function Day({
   );
 }
 export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("automation");
   const client = useQueryClient(),
     [anchor, setAnchor] = useState(new Date()),
     [mode, setMode] = useState<CalendarMode>("month"),
@@ -172,7 +174,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
       client.setQueryData(key, context?.previous);
       toast.error(e.message);
     },
-    onSuccess: () => toast.success("Post rescheduled"),
+    onSuccess: () => toast.success(t("calendar.rescheduled")),
     onSettled: () => {
       void client.invalidateQueries({
         predicate: (q) => q.queryKey.includes(ws),
@@ -201,15 +203,15 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Calendar"
-        description="Drag the handle to move a scheduled post. Change time works with keyboard and touch."
+        title={t("calendar.title")}
+        description={t("calendar.description")}
         actions={
           <>
-            <Button onClick={() => shift(-1)} aria-label="Previous period">
+            <Button onClick={() => shift(-1)} aria-label={t("calendar.previousPeriod")}>
               ←
             </Button>
-            <Button onClick={() => setAnchor(new Date())}>Today</Button>
-            <Button onClick={() => shift(1)} aria-label="Next period">
+            <Button onClick={() => setAnchor(new Date())}>{t("calendar.today")}</Button>
+            <Button onClick={() => shift(1)} aria-label={t("calendar.nextPeriod")}>
               →
             </Button>
           </>
@@ -222,9 +224,9 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
           value={mode}
           onChange={setMode}
           options={[
-            { value: "month", label: "Month" },
-            { value: "week", label: "Week" },
-            { value: "day", label: "Day" },
+            { value: "month", label: t("calendar.mode.month") },
+            { value: "week", label: t("calendar.mode.week") },
+            { value: "day", label: t("calendar.mode.day") },
           ]}
         />
         <Select
@@ -240,7 +242,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
           value={target}
           onValueChange={setTarget}
           options={[
-            { value: "all", label: "All channel sets" },
+            { value: "all", label: t("calendar.allChannelSets") },
             ...(sets.data ?? []).map((s) => ({ value: s.id, label: s.name })),
           ]}
         />
@@ -279,7 +281,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
       )}
       {!!query.data?.free_slots.length && (
         <Card className="p-4">
-          <h2 className="font-medium mb-2">Next free slots</h2>
+          <h2 className="font-medium mb-2">{t("calendar.nextFreeSlots")}</h2>
           <div className="flex flex-wrap gap-2">
             {query.data.free_slots.slice(0, 12).map((s, i) => (
               <span
@@ -295,7 +297,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={!!selected}
         onOpenChange={(open) => !open && setSelected(null)}
-        title="Content Studio"
+        title={t("calendar.contentStudio")}
         size="xl"
       >
         {selected && (
@@ -309,7 +311,7 @@ export function CalendarPage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={!!moving}
         onOpenChange={(open) => !open && setMoving(null)}
-        title="Reschedule post"
+        title={t("calendar.reschedulePost")}
       >
         <DateTimePicker value={at} onChange={setAt} timeZone={timezone} />
         <Button
