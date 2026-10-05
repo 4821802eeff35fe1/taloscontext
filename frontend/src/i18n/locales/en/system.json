@@ -13,7 +13,8 @@
     "empty": "No matching events",
     "actionAria": "Audit action",
     "actorAria": "Audit actor",
-    "entityAria": "Audit entity"
+    "entityAria": "Audit entity",
+    "allEntities": "All entities"
   },
   "notifications": {
     "title": "Notifications",
