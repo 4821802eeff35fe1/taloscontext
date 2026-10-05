@@ -233,7 +233,6 @@ export function NotificationsPage({
   );
 }
 export function SettingsPage({ workspaceId: ws }: { workspaceId: string }) {
-  const { t } = useTranslation("settings");
   const query = useQuery({
     queryKey: ["settings", ws],
     queryFn: () => endpoints.settings(ws),
