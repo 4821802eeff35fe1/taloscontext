@@ -16,6 +16,7 @@ import {
 import { DateTimePicker, Select, Switch } from "@/components/ui/forms";
 import { ConfirmDialog, Dialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
+import { knowledgeKindLabel } from "@/i18n/labels";
 const kinds = [
   "FACT",
   "CONTACT",
@@ -118,7 +119,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
           onValueChange={setKind}
           options={kinds.map((value) => ({
             value,
-            label: value.replaceAll("_", " "),
+            label: knowledgeKindLabel(value),
           }))}
         />
         <Input
@@ -179,7 +180,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
                 className="block border-b py-3 text-left w-full"
               >
                 <p>
-                  {h.document_title} · {h.kind}
+                  {h.document_title} · {knowledgeKindLabel(h.kind)}
                 </p>
                 <p className="text-sm text-ink-muted">{h.snippet}</p>
               </button>
@@ -217,7 +218,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
                 />
               </div>
               <p className="text-xs text-ink-muted">
-                {d.kind} · {d.format} · {d.entries} entries
+                {knowledgeKindLabel(d.kind)} · {d.format} · {t("common:count.entries", { count: d.entries })}
                 {d.valid_until && " · valid until " + d.valid_until}
               </p>
               {d.warnings.map((w) => (
@@ -277,7 +278,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
             ariaLabel="Entry type"
             value={kind}
             onValueChange={setKind}
-            options={kinds.map((value) => ({ value, label: value }))}
+            options={kinds.map((value) => ({ value, label: knowledgeKindLabel(value) }))}
           />
           <Textarea
             aria-label={t("knowledge.entryTextAria")}
@@ -351,7 +352,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
           detail.data?.preview.map((p) => (
             <div className="border-b py-3" key={p.id}>
               <p className="text-xs text-ink-faint">
-                {p.kind} · {p.effective_at}
+                {knowledgeKindLabel(p.kind)} · {p.effective_at}
               </p>
               <p className="whitespace-pre-wrap text-sm">{p.content}</p>
               <pre className="overflow-auto text-xs text-ink-muted mt-2">
@@ -368,7 +369,7 @@ export function KnowledgePage({ workspaceId: ws }: { workspaceId: string }) {
       >
         <div className="space-y-3">
           <Input
-            aria-label="Knowledge base name"
+            aria-label={t("knowledge.baseNameAria")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
