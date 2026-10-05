@@ -17,5 +17,7 @@
     "EDITOR": "Editor",
     "APPROVER": "Approver",
     "VIEWER": "Viewer"
-  }
+  },
+  "workspaceTimezoneAria": "Workspace timezone",
+  "roleFor": "Role for {{email}}"
 }
