@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Schedule, type ScheduleInput } from "@/lib/api";
 import {
   Button,
@@ -35,6 +36,7 @@ const defaults: ScheduleInput = {
   misfire_policy: null,
 };
 export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("automation");
   const [editing, setEditing] = useState<Schedule | null | undefined>(
       undefined,
     ),
@@ -47,8 +49,8 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Schedules"
-        description="Local time windows become persistent UTC publication times."
+        title={t("schedules.title")}
+        description={t("schedules.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
             Create schedule
@@ -61,8 +63,8 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
         <EmptyState
-          title="No schedules"
-          description="Define posting windows for a channel set."
+          title={t("schedules.emptyTitle")}
+          description={t("schedules.emptyDescription")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -84,7 +86,7 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
               </p>
               <p className="text-xs">
                 {s.windows.map((w) => w.start + "–" + w.end).join(" · ")} ·{" "}
-                {s.randomize ? "Random" : "Fixed"}
+                {s.randomize ? t("schedules.random") : t("schedules.fixed")}
               </p>
               <p className="text-xs text-ink-faint">
                 {s.next_slots
@@ -93,7 +95,7 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
                   .join(" · ")}
               </p>
               <div className="flex gap-2">
-                <Button onClick={() => setEditing(s)}>Edit</Button>
+                <Button onClick={() => setEditing(s)}>{t("schedules.edit")}</Button>
                 <Button variant="danger" onClick={() => setRemove(s.id)}>
                   Delete
                 </Button>
@@ -113,8 +115,8 @@ export function SchedulesPage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(open) => !open && setRemove(null)}
-        title="Delete this schedule?"
-        description="Existing scheduled posts keep their times."
+        title={t("schedules.deleteTitle")}
+        description={t("schedules.deleteDescription")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteSchedule(ws, remove!));
@@ -139,6 +141,7 @@ function ScheduleEditor({
     queryKey: ["channel-sets", ws],
     queryFn: () => endpoints.channelSets(ws),
   });
+  const { t } = useTranslation("automation");
   const action = useOperation(ws, async () => {
     if (schedule) await endpoints.updateSchedule(ws, schedule.id, draft);
     else await endpoints.createSchedule(ws, draft);
@@ -157,7 +160,7 @@ function ScheduleEditor({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={schedule ? "Edit schedule" : "Create schedule"}
+      title={schedule ? t("schedules.editTitle") : t("schedules.createTitle")}
       size="lg"
     >
       <form
@@ -167,7 +170,7 @@ function ScheduleEditor({
           action.mutate();
         }}
       >
-        <Field label="Name" htmlFor="schedule-name">
+        <Field label={t("schedules.name")} htmlFor="schedule-name">
           <Input
             id="schedule-name"
             value={draft.name}
@@ -182,7 +185,7 @@ function ScheduleEditor({
             field("channel_set_id", v === "none" ? null : v)
           }
           options={[
-            { value: "none", label: "Any channel set" },
+            { value: "none", label: t("schedules.anyChannelSet") },
             ...(sets.data ?? []).map((s) => ({ value: s.id, label: s.name })),
           ]}
         />
@@ -230,7 +233,7 @@ function ScheduleEditor({
             </Field>
           ))}
         </div>
-        <Field label="Time windows">
+        <Field label={t("schedules.timeWindows")}>
           {draft.windows.map((w, i) => (
             <div className="flex items-center gap-2 mb-2" key={i}>
               <Input
@@ -261,7 +264,7 @@ function ScheduleEditor({
                 }
               />
               <Button
-                aria-label="Remove window"
+                aria-label={t("schedules.removeWindow")}
                 onClick={() =>
                   field(
                     "windows",
@@ -286,20 +289,20 @@ function ScheduleEditor({
         </Field>
         <label className="flex gap-2 items-center">
           <Switch
-            label="Randomized times"
+            label={t("schedules.randomizedTimes")}
             checked={draft.randomize}
             onCheckedChange={(v) => field("randomize", v)}
           />
           Randomized inside windows
         </label>
-        <Field label="Categories">
+        <Field label={t("schedules.categories")}>
           <TagInput
             ariaLabel="Schedule categories"
             value={draft.categories}
             onChange={(v) => field("categories", v)}
           />
         </Field>
-        <Field label="Excluded dates (YYYY-MM-DD)">
+        <Field label={t("schedules.excludedDates")}>
           <TagInput
             ariaLabel="Excluded dates"
             value={draft.exclude_dates}
@@ -307,7 +310,7 @@ function ScheduleEditor({
           />
         </Field>
         <Select
-          ariaLabel="Misfire policy"
+          ariaLabel={t("schedules.misfireAria")}
           value={draft.misfire_policy ?? "default"}
           onValueChange={(v) =>
             field("misfire_policy", v === "default" ? null : v)
