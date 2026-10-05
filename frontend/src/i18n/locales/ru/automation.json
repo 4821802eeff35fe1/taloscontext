@@ -31,7 +31,10 @@
     "attempts": "Попытки",
     "cancelTitle": "Отменить эту задачу?",
     "attempt": "Попытка",
-    "allOperations": "Все операции"
+    "allOperations": "Все операции",
+    "statusAria": "Статус задачи",
+    "typeAria": "Тип задачи",
+    "allStatuses": "Все статусы"
   },
   "calendar": {
     "title": "Календарь",
