@@ -13,7 +13,8 @@
     "empty": "Событий не найдено",
     "actionAria": "Действие аудита",
     "actorAria": "Автор изменения",
-    "entityAria": "Сущность аудита"
+    "entityAria": "Сущность аудита",
+    "allEntities": "Все сущности"
   },
   "notifications": {
     "title": "Уведомления",
