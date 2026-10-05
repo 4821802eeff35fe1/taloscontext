@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type Source } from "@/lib/api";
 import {
   Button,
@@ -16,6 +17,7 @@ import { Dialog, ConfirmDialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
 import { dateTime } from "@/lib/format";
 export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("ai");
   const [editing, setEditing] = useState<Source | null | undefined>(),
     [remove, setRemove] = useState<string | null>(null);
   const query = useQuery({
@@ -26,8 +28,8 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Sources"
-        description="Fetched stories go to Ideas. Fetching never generates a post."
+        title={t("sources.title")}
+        description={t("sources.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
             Add source
@@ -40,8 +42,8 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
         <EmptyState
-          title="No sources yet"
-          description="Add RSS, a website, a URL or a Telegram channel."
+          title={t("sources.emptyTitle")}
+          description={t("sources.emptyDescription")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -78,7 +80,7 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
                 >
                   Fetch now
                 </Button>
-                <Button onClick={() => setEditing(s)}>Edit</Button>
+                <Button onClick={() => setEditing(s)}>{t("sources.edit")}</Button>
                 <Button variant="danger" onClick={() => setRemove(s.id)}>
                   Delete
                 </Button>
@@ -97,7 +99,7 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(o) => !o && setRemove(null)}
-        title="Delete this source?"
+        title={t("sources.deleteTitle")}
         destructive
         onConfirm={() => {
           action.mutate(() => endpoints.deleteSource(ws, remove!));
@@ -152,7 +154,7 @@ function SourceEditor({
     onClose();
   });
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title="Source">
+    <Dialog open onOpenChange={(o) => !o && onClose()} title={t("sources.dialogTitle")}>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -161,8 +163,8 @@ function SourceEditor({
         }}
       >
         <Input
-          aria-label="Source name"
-          placeholder="Name"
+          aria-label={t("sources.sourceNameAria")}
+          placeholder={t("sources.namePlaceholder")}
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -180,7 +182,7 @@ function SourceEditor({
         {kind === "telegram" ? (
           <>
             <Input
-              aria-label="Telegram channel"
+              aria-label={t("sources.telegramChannelAria")}
               placeholder="@channel"
               value={channel}
               onChange={(e) => setChannel(e.target.value)}
@@ -196,7 +198,7 @@ function SourceEditor({
           </>
         ) : (
           <Input
-            aria-label="Source URL"
+            aria-label={t("sources.sourceUrlAria")}
             type="url"
             placeholder="https://…"
             required
@@ -204,9 +206,9 @@ function SourceEditor({
             onChange={(e) => setUrl(e.target.value)}
           />
         )}
-        <Field label="Fetch interval (minutes)">
+        <Field label={t("sources.fetchInterval")}>
           <Input
-            aria-label="Fetch interval"
+            aria-label={t("sources.fetchIntervalAria")}
             type="number"
             min={10}
             value={interval}
@@ -226,6 +228,7 @@ function SourceEditor({
   );
 }
 export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("ai");
   const [status, setStatus] = useState("NEW"),
     [q, setQ] = useState("");
   const query = useQuery({
@@ -240,12 +243,12 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Ideas inbox"
-        description="Review sources and turn promising stories into posts."
+        title={t("ideas.title")}
+        description={t("ideas.description")}
       />
       <div className="flex gap-2 flex-wrap">
         <Select
-          ariaLabel="Idea status"
+          ariaLabel={t("ideas.statusAria")}
           className="w-52"
           value={status}
           onValueChange={setStatus}
@@ -257,8 +260,8 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
           )}
         />
         <Input
-          aria-label="Search ideas"
-          placeholder="Search ideas…"
+          aria-label={t("ideas.searchAria")}
+          placeholder={t("ideas.search")}
           className="max-w-xs"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -270,8 +273,8 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
         <ErrorState error={query.error} />
       ) : !query.data.items.length ? (
         <EmptyState
-          title="No ideas here"
-          description="Add a source and fetch its latest stories."
+          title={t("ideas.emptyTitle")}
+          description={t("ideas.emptyDescription")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
