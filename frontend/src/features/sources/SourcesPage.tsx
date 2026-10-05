@@ -15,6 +15,7 @@ import {
 import { Select, Switch, TagInput } from "@/components/ui/forms";
 import { Dialog, ConfirmDialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
+import { sourceKindLabel, statusLabel } from "@/i18n/labels";
 import { dateTime } from "@/lib/format";
 export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
   const { t } = useTranslation("ai");
@@ -52,7 +53,7 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
               <div className="flex justify-between">
                 <h2>{s.name}</h2>
                 <Switch
-                  label={`Enable ${s.name}`}
+                  label={t("sources.enable", { name: s.name })}
                   checked={s.enabled}
                   onCheckedChange={(enabled) =>
                     action.mutate(() =>
@@ -62,12 +63,10 @@ export function SourcesPage({ workspaceId: ws }: { workspaceId: string }) {
                 />
               </div>
               <p className="text-xs text-ink-muted">
-                {s.kind} · {s.items_new} new / {s.items_total} total · Every{" "}
-                {String(s.config.fetch_interval_minutes)} min
+                {sourceKindLabel(s.kind)} · {t("sources.summary", { newCount: s.items_new, totalCount: s.items_total, minutes: String(s.config.fetch_interval_minutes) })}
               </p>
               <p className="text-xs">
-                Last fetch: {dateTime(s.last_fetched_at)} · Success:{" "}
-                {dateTime(s.last_success_at)}
+                {t("sources.lastFetch", { value: dateTime(s.last_fetched_at) })} · {t("sources.success", { value: dateTime(s.last_success_at) })}
               </p>
               {s.last_error && (
                 <p className="text-xs text-danger">{s.last_error}</p>
@@ -283,7 +282,7 @@ export function IdeasPage({ workspaceId: ws }: { workspaceId: string }) {
             <Card key={i.id} className="p-4 space-y-3">
               <h2 className="font-medium">{i.title}</h2>
               <p className="text-xs text-ink-faint">
-                {i.source_name} · {dateTime(i.published_at)} · {i.status}
+                {i.source_name} · {dateTime(i.published_at)} · {statusLabel(i.status, "idea")}
               </p>
               <p className="text-sm text-ink-muted">{i.summary}</p>
               <div className="flex flex-wrap gap-2">
