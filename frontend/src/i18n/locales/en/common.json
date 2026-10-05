@@ -1,0 +1,293 @@
+{
+  "untitled": "Untitled",
+  "nav": {
+    "label": "Main navigation",
+    "group": {
+      "content": "Content",
+      "distribution": "Distribution",
+      "media": "Media",
+      "ai": "AI",
+      "analytics": "Analytics",
+      "automation": "Automation",
+      "system": "System"
+    },
+    "item": {
+      "overview": "Overview",
+      "posts": "Posts",
+      "approval": "Approval",
+      "calendar": "Calendar",
+      "series": "Series",
+      "ideas": "Ideas",
+      "channels": "Channels",
+      "channelSets": "Channel Sets",
+      "accounts": "Accounts",
+      "gallery": "Gallery",
+      "knowledge": "Knowledge",
+      "tone": "Tone of Voice",
+      "sources": "Sources",
+      "performance": "Performance",
+      "costs": "Costs",
+      "autopilot": "Autopilot",
+      "schedules": "Schedules",
+      "jobs": "Jobs",
+      "notifications": "Notifications",
+      "audit": "Audit Log",
+      "settings": "Settings"
+    }
+  },
+  "shell": {
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation",
+    "selectWorkspace": "Select workspace",
+    "workspace": "Workspace",
+    "live": "Live",
+    "reconnecting": "Reconnecting…",
+    "signOut": "Sign out",
+    "userMenu": "Account and language",
+    "notifications_one": "Notifications, {{count}} unread",
+    "notifications_other": "Notifications, {{count}} unread",
+    "listLocale": "en",
+    "fake": {
+      "banner": "Dev mode: fake providers are active — {{providers}} are simulated. No real cost, no real sends.",
+      "aiText": "AI text",
+      "aiImage": "AI images"
+    },
+    "noWorkspace": {
+      "title": "No workspace",
+      "description": "Create a workspace to get started."
+    }
+  },
+  "language": {
+    "label": "Language",
+    "name": {
+      "en": "English",
+      "ru": "Русский"
+    },
+    "short": {
+      "en": "EN",
+      "ru": "RU"
+    }
+  },
+  "palette": {
+    "open": "Open command palette",
+    "title": "Commands and search",
+    "placeholder": "Search commands, posts and channels...",
+    "empty": "No matching results.",
+    "actions": "Actions",
+    "results": "Search results",
+    "autopilotPaused": "Autopilot paused",
+    "kind": {
+      "post": "Post",
+      "channel": "Channel",
+      "channel_set": "Channel set"
+    },
+    "action": {
+      "createPost": "Create post",
+      "generatePost": "Generate post",
+      "openCalendar": "Open Calendar",
+      "addAccount": "Add Telegram account",
+      "createChannelSet": "Create Channel Set",
+      "openApproval": "Open Approval",
+      "openJobs": "Open Jobs",
+      "openCosts": "Open Costs",
+      "pauseAutopilot": "Pause Autopilot"
+    }
+  },
+  "action": {
+    "dismiss": "Dismiss",
+    "loadMore": "Load more",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "add": "Add",
+    "remove": "Remove",
+    "retry": "Retry",
+    "tryAgain": "Try again",
+    "confirm": "Confirm",
+    "refresh": "Refresh",
+    "open": "Open",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "today": "Today",
+    "done": "Done",
+    "upload": "Upload",
+    "download": "Download",
+    "archive": "Archive",
+    "restore": "Restore",
+    "enable": "Enable",
+    "disable": "Disable",
+    "pause": "Pause",
+    "resume": "Resume",
+    "search": "Search",
+    "clear": "Clear",
+    "apply": "Apply",
+    "copy": "Copy",
+    "view": "View",
+    "details": "Details"
+  },
+  "state": {
+    "loading": "Loading…",
+    "loadingWorkspace": "Loading workspace…",
+    "none": "None",
+    "never": "Never",
+    "yes": "Yes",
+    "no": "No",
+    "on": "On",
+    "off": "Off",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "optional": "optional",
+    "notSet": "Not set",
+    "configured": "Configured",
+    "notConfigured": "Not configured",
+    "unknown": "Unknown"
+  },
+  "toast": {
+    "saved": "Saved",
+    "deleted": "Deleted",
+    "copied": "Copied"
+  },
+  "error": {
+    "title": "Something needs attention",
+    "generic": "The request failed."
+  },
+  "count": {
+    "posts_one": "{{count, number}} post",
+    "posts_other": "{{count, number}} posts",
+    "channels_one": "{{count, number}} channel",
+    "channels_other": "{{count, number}} channels",
+    "publications_one": "{{count, number}} publication",
+    "publications_other": "{{count, number}} publications",
+    "jobs_one": "{{count, number}} job",
+    "jobs_other": "{{count, number}} jobs",
+    "accounts_one": "{{count, number}} account",
+    "accounts_other": "{{count, number}} accounts",
+    "entries_one": "{{count, number}} entry",
+    "entries_other": "{{count, number}} entries",
+    "documents_one": "{{count, number}} document",
+    "documents_other": "{{count, number}} documents",
+    "items_one": "{{count, number}} item",
+    "items_other": "{{count, number}} items",
+    "subscribers_one": "{{count, number}} subscriber",
+    "subscribers_other": "{{count, number}} subscribers",
+    "views_one": "{{count, number}} view",
+    "views_other": "{{count, number}} views",
+    "ideas_one": "{{count, number}} idea",
+    "ideas_other": "{{count, number}} ideas",
+    "slots_one": "{{count, number}} slot",
+    "slots_other": "{{count, number}} slots",
+    "requests_one": "{{count, number}} request",
+    "requests_other": "{{count, number}} requests",
+    "attempts_one": "{{count, number}} attempt",
+    "attempts_other": "{{count, number}} attempts",
+    "minutes_one": "{{count, number}} minute",
+    "minutes_other": "{{count, number}} minutes",
+    "postsPerDay_one": "{{count, number}} post per day",
+    "postsPerDay_other": "{{count, number}} posts per day"
+  },
+  "period": {
+    "daily": "daily",
+    "monthly": "monthly",
+    "post": "per-post",
+    "per_post": "per-post"
+  },
+  "entity": {
+    "channel_set": "Channel set",
+    "tone_profile": "Tone profile",
+    "series": "Series",
+    "idea": "Idea",
+    "media": "Media",
+    "schedule": "Schedule"
+  },
+  "cta": {
+    "none": "No CTA",
+    "hr": "HR / hiring",
+    "affiliate": "Affiliate",
+    "ceo": "CEO",
+    "website": "Website",
+    "email": "Email"
+  },
+  "category": {
+    "educational": "Educational",
+    "news": "News",
+    "expert": "Expert",
+    "recruiting": "Recruiting"
+  },
+  "status": {
+    "any": {
+      "IDEA": "Idea",
+      "DRAFT": "Draft",
+      "GENERATING": "Generating",
+      "PENDING_APPROVAL": "Pending approval",
+      "APPROVED": "Approved",
+      "SCHEDULED": "Scheduled",
+      "PUBLISHING": "Publishing",
+      "PUBLISHED": "Published",
+      "PARTIALLY_PUBLISHED": "Partly published",
+      "FAILED": "Failed",
+      "REJECTED": "Rejected",
+      "ARCHIVED": "Archived",
+      "PENDING": "Pending",
+      "CLAIMED": "Claimed",
+      "SENDING": "Sending",
+      "SUCCESS": "Success",
+      "PARTIAL_FAILURE": "Partial failure",
+      "QUEUED": "Queued",
+      "RUNNING": "Running",
+      "RETRYING": "Retrying",
+      "CANCELLED": "Cancelled",
+      "CONNECTED": "Connected",
+      "DISCONNECTED": "Disconnected",
+      "AUTH_REQUIRED": "Re-login needed",
+      "TWO_FA_REQUIRED": "2FA required",
+      "FLOOD_WAIT": "Flood wait",
+      "ERROR": "Error",
+      "DISABLED": "Disabled",
+      "HEALTHY": "Healthy",
+      "NO_POST_PERMISSION": "No posting rights",
+      "NO_PERMISSION": "No posting rights",
+      "ACCOUNT_OFFLINE": "Account offline",
+      "UNAVAILABLE": "Unavailable",
+      "AVAILABLE": "Available",
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "COMPLETED": "Completed",
+      "NEW": "New",
+      "SHORTLISTED": "Shortlisted",
+      "USED": "Used",
+      "DISMISSED": "Dismissed",
+      "PHONE_SUBMITTED": "Phone submitted",
+      "CODE_REQUIRED": "Code required",
+      "PASSWORD_REQUIRED": "Password required",
+      "AUTHORIZING": "Signing in",
+      "EXPIRED": "Expired",
+      "GENERATED": "Generated",
+      "UPLOADED": "Uploaded",
+      "UNUSED": "Unused",
+      "DELIVERY_UNKNOWN": "Delivery unknown",
+      "ENABLED": "Enabled"
+    },
+    "publication": {
+      "SUCCESS": "Published",
+      "PENDING": "Waiting",
+      "CLAIMED": "Preparing"
+    },
+    "batch": {
+      "SUCCESS": "All published",
+      "PENDING": "Waiting",
+      "PUBLISHING": "Publishing"
+    },
+    "job": {
+      "SUCCESS": "Done"
+    },
+    "flow": {
+      "COMPLETED": "Connected",
+      "FAILED": "Failed"
+    }
+  }
+}

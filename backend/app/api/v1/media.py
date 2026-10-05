@@ -203,7 +203,7 @@ async def media_detail(workspace_id: uuid.UUID, media_id: uuid.UUID,
         **base.model_dump(), provider=gen.provider if gen else None, model=gen.model if gen else None,
         prompt=gen.prompt if gen else None, cost_rub=Decimal(gen.cost_total_rub) if gen else None,
         checksum_sha256=asset.checksum_sha256,
-        linked_posts=[{"id": str(p.id), "title": p.title or p.topic or "Untitled", "status": p.status.value} for p in posts],
+        linked_posts=[{"id": str(p.id), "title": p.title or p.topic or "", "status": p.status.value} for p in posts],
     )
 
 

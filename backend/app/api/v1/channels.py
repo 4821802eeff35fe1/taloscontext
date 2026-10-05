@@ -282,7 +282,7 @@ async def get_channel_set(
     return ChannelSetDetail(
         **base.model_dump(),
         channels=await _channel_responses(db, list(channels)),
-        recent_posts=[SetPost(content_id=i.id, title=i.title or i.topic or "Untitled", status=i.status.value,
+        recent_posts=[SetPost(content_id=i.id, title=i.title or i.topic or "", status=i.status.value,
                               published_at=i.published_at, scheduled_at=i.scheduled_at, targets=stats[i.id]["targets"],
                               published=stats[i.id]["published"], failed=stats[i.id]["failed"], views=stats[i.id]["views"])
                       for i in items],

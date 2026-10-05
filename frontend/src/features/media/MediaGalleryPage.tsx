@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, mediaUrl } from "@/lib/api";
 import {
   Button,
@@ -15,7 +16,9 @@ import { Dialog, Tooltip } from "@/components/ui/overlays";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useOperation } from "@/hooks/useOperations";
 import { bytes, rub } from "@/lib/format";
+import { errorLabel, statusLabel } from "@/i18n/labels";
 export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
+  const { t } = useTranslation("media");
   const input = useRef<HTMLInputElement>(null),
     [tab, setTab] = useState("all"),
     [selected, setSelected] = useState<string | null>(null),
@@ -40,16 +43,22 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Media gallery"
+        title={t("gallery.title")}
         actions={
           <>
-            <Tooltip content={provider.data?.message || "Create an image"}>
+            <Tooltip
+              content={
+                provider.data && !provider.data.available
+                  ? errorLabel("IMAGE_PROVIDER_UNAVAILABLE")
+                  : t("gallery.generateHint")
+              }
+            >
               <span>
                 <Button
                   disabled={!provider.data?.available}
                   onClick={() => setGenerate(true)}
                 >
-                  Generate image
+                  {t("gallery.generate")}
                 </Button>
               </span>
             </Tooltip>
@@ -58,7 +67,7 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
               onClick={() => input.current?.click()}
               loading={action.isPending}
             >
-              Upload
+              {t("common:action.upload")}
             </Button>
             <input
               ref={input}
@@ -86,7 +95,7 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
           "archived",
         ].map((value) => ({
           value,
-          label: value.charAt(0).toUpperCase() + value.slice(1),
+          label: t(`gallery.tab.${value}`),
         }))}
       />
       <Card className="p-4">
@@ -96,8 +105,8 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
           <ErrorState error={query.error} />
         ) : !query.data.pages[0].items.length ? (
           <EmptyState
-            title="No images here"
-            description="Upload an image to use it in a post."
+            title={t("gallery.empty.title")}
+            description={t("gallery.empty.description")}
           />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -111,17 +120,17 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
                 >
                   <img
                     src={mediaUrl(a.url)}
-                    alt={a.original_filename || "Generated image"}
+                    alt={a.original_filename || t("gallery.generatedImage")}
                     loading="lazy"
                     className="aspect-square w-full object-cover"
                   />
                   <div className="p-2 text-xs space-y-1">
                     <p className="truncate">
-                      {a.original_filename || "Generated image"}
+                      {a.original_filename || t("gallery.generatedImage")}
                     </p>
-                    <StatusBadge status={a.status} />
+                    <StatusBadge status={a.status} domain="media" />
                     <p className="text-ink-faint">
-                      {bytes(a.size_bytes)} · {a.used ? "Used" : "Unused"}
+                      {bytes(a.size_bytes)} · {a.used ? t("gallery.used") : t("gallery.unused")}
                     </p>
                   </div>
                 </button>
@@ -130,20 +139,20 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
         )}
         {query.hasNextPage && (
           <Button className="mt-4" onClick={() => void query.fetchNextPage()}>
-            Load more
+            {t("common:action.loadMore")}
           </Button>
         )}
       </Card>
       <Dialog
         open={!!selected}
         onOpenChange={(open) => !open && setSelected(null)}
-        title="Image details"
+        title={t("gallery.details")}
       >
         {detail.data && (
-          <div className="space-y-3">
+          <div className="space-y-3 break-words">
             <img
               src={mediaUrl(detail.data.url)}
-              alt={detail.data.original_filename || "Image"}
+              alt={detail.data.original_filename || t("gallery.image")}
               className="w-full max-h-80 object-contain"
             />
             <p>
@@ -156,7 +165,7 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
             <p className="text-sm text-ink-muted">{detail.data.prompt}</p>
             {detail.data.linked_posts.map((p) => (
               <p key={p.id}>
-                {p.title} · {p.status}
+                {p.title || t("common:untitled")} · {statusLabel(p.status, "content")}
               </p>
             ))}
             <Button
@@ -170,22 +179,23 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
                 )
               }
             >
-              {detail.data.status === "ARCHIVED" ? "Restore" : "Archive"}
+              {detail.data.status === "ARCHIVED" ? t("common:action.restore") : t("common:action.archive")}
             </Button>
             <a
               className="btn-secondary"
               href={mediaUrl(detail.data.url) + "?download=true"}
               download
             >
-              Download
+              {t("common:action.download")}
             </a>
           </div>
         )}
         {detail.isError && <ErrorState error={detail.error} />}
       </Dialog>
-      <Dialog open={generate} onOpenChange={setGenerate} title="Generate image">
+      <Dialog open={generate} onOpenChange={setGenerate} title={t("gallery.generate")}>
         <Textarea
-          aria-label="Image prompt"
+          aria-label={t("gallery.prompt")}
+          placeholder={t("gallery.promptPlaceholder")}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
         />
@@ -197,7 +207,7 @@ export function MediaGalleryPage({ workspaceId: ws }: { workspaceId: string }) {
             setGenerate(false);
           }}
         >
-          Generate
+          {t("gallery.generateAction")}
         </Button>
       </Dialog>
     </div>

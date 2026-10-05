@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endpoints, ApiError, type TelegramAccount } from "@/lib/api";
+import { useTranslation } from "react-i18next";
+import { endpoints, errorText, type AuthFlow, type TelegramAccount } from "@/lib/api";
+import { errorLabel, statusLabel } from "@/i18n/labels";
+import { dateTime } from "@/lib/format";
 import { Card, EmptyState } from "@/components/ui/Card";
+import { ErrorState, SkeletonRows } from "@/components/ui/primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Dialog } from "@/components/ui/Dialog";
 import { ConfirmDialog } from "@/components/ui/overlays";
@@ -17,6 +21,7 @@ function AddAccountDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
+  const { t } = useTranslation("channels");
   const client = useQueryClient();
   const [step, setStep] = useState<"phone" | "code" | "2fa">("phone");
   const [phone, setPhone] = useState("");
@@ -24,6 +29,14 @@ function AddAccountDialog({
   const [password, setPassword] = useState("");
   const [flowId, setFlowId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Flow failures carry a machine code; the server message is only a fallback.
+  const flowError = (flow: AuthFlow) =>
+    flow.error_code
+      ? errorLabel(flow.error_code, { seconds: flow.wait_seconds ?? 0 })
+      : flow.state === "EXPIRED"
+        ? t("accounts.flow.expired")
+        : t("accounts.flow.failed", { state: statusLabel(flow.state, "flow") });
 
   const reset = () => {
     setStep("phone");
@@ -38,15 +51,14 @@ function AddAccountDialog({
     mutationFn: () => endpoints.startTelegramAuth(workspaceId, phone),
     onSuccess: (flow) => {
       if (flow.state === "FAILED") {
-        setError(flow.error ?? "Telegram refused to send a code");
+        setError(flow.error_code ? flowError(flow) : t("accounts.flow.codeRefused"));
         return;
       }
       setFlowId(flow.flow_id);
       setStep("code");
       setError(null);
     },
-    onError: (e) =>
-      setError(e instanceof ApiError ? e.message : "Failed to send code"),
+    onError: (e) => setError(errorText(e)),
   });
 
   const submitCode = useMutation({
@@ -58,7 +70,7 @@ function AddAccountDialog({
         return;
       }
       if (flow.state !== "COMPLETED") {
-        setError(flow.error ?? `Login is ${flow.state.toLowerCase()}`);
+        setError(flowError(flow));
         return;
       }
       client.invalidateQueries({
@@ -67,8 +79,7 @@ function AddAccountDialog({
       onOpenChange(false);
       reset();
     },
-    onError: (e) =>
-      setError(e instanceof ApiError ? e.message : "Invalid code"),
+    onError: (e) => setError(errorText(e)),
   });
 
   const submit2FA = useMutation({
@@ -76,7 +87,7 @@ function AddAccountDialog({
       endpoints.submitTelegramPassword(workspaceId, flowId!, password),
     onSuccess: (flow) => {
       if (flow.state !== "COMPLETED") {
-        setError(flow.error ?? `Login is ${flow.state.toLowerCase()}`);
+        setError(flowError(flow));
         return;
       }
       client.invalidateQueries({
@@ -85,8 +96,7 @@ function AddAccountDialog({
       onOpenChange(false);
       reset();
     },
-    onError: (e) =>
-      setError(e instanceof ApiError ? e.message : "Invalid password"),
+    onError: (e) => setError(errorText(e)),
   });
 
   return (
@@ -96,13 +106,13 @@ function AddAccountDialog({
         onOpenChange(v);
         if (!v) reset();
       }}
-      title="Add Telegram account"
+      title={t("accounts.add.title")}
       description={
         step === "phone"
-          ? "Enter the phone number of the Telegram account you want to connect."
+          ? t("accounts.add.phoneHint")
           : step === "code"
-            ? "Enter the verification code sent to that account."
-            : "This account has Two-Step Verification enabled. Enter the password."
+            ? t("accounts.add.codeHint")
+            : t("accounts.add.passwordHint")
       }
     >
       {step === "phone" && (
@@ -114,8 +124,11 @@ function AddAccountDialog({
           }}
         >
           <div>
-            <label className="label">Phone number</label>
+            <label className="label" htmlFor="tg-phone">{t("accounts.add.phone")}</label>
             <input
+              id="tg-phone"
+              type="tel"
+              autoComplete="tel"
               className="input"
               placeholder="+15551234567"
               value={phone}
@@ -123,12 +136,12 @@ function AddAccountDialog({
               required
             />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
           <button
             className="btn-primary w-full"
             disabled={startLogin.isPending}
           >
-            Send code
+            {t("accounts.add.sendCode")}
           </button>
         </form>
       )}
@@ -142,9 +155,11 @@ function AddAccountDialog({
           }}
         >
           <div>
-            <label className="label">Verification code</label>
+            <label className="label" htmlFor="tg-code">{t("accounts.add.code")}</label>
             <input
-              aria-label="Verification code"
+              id="tg-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
               className="input"
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -152,12 +167,12 @@ function AddAccountDialog({
               autoFocus
             />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
           <button
             className="btn-primary w-full"
             disabled={submitCode.isPending}
           >
-            Verify
+            {t("accounts.add.verify")}
           </button>
         </form>
       )}
@@ -171,9 +186,11 @@ function AddAccountDialog({
           }}
         >
           <div>
-            <label className="label">Two-step verification password</label>
+            <label className="label" htmlFor="tg-password">{t("accounts.add.password")}</label>
             <input
+              id="tg-password"
               type="password"
+              autoComplete="current-password"
               className="input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -181,9 +198,9 @@ function AddAccountDialog({
               autoFocus
             />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
           <button className="btn-primary w-full" disabled={submit2FA.isPending}>
-            Confirm
+            {t("common:action.confirm")}
           </button>
         </form>
       )}
@@ -198,6 +215,7 @@ function AccountRow({
   workspaceId: string;
   account: TelegramAccount;
 }) {
+  const { t } = useTranslation("channels");
   const client = useQueryClient();
 
   const [confirm, setConfirm] = useState<"disconnect" | "delete" | null>(null);
@@ -205,7 +223,7 @@ function AccountRow({
     mutationFn: () =>
       endpoints.refreshTelegramChannels(workspaceId, account.id),
     onSuccess: () => {
-      toast.success("Channel import queued");
+      toast.success(t("accounts.importQueued"));
       void client.invalidateQueries({ queryKey: ["channels", workspaceId] });
     },
     onError: (e) => toast.error(e.message),
@@ -228,35 +246,46 @@ function AccountRow({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 py-3">
-      <div>
+      <div className="min-w-0">
         <p className="text-sm text-ink">
           {account.first_name} {account.last_name}{" "}
           <span className="text-ink-faint">
             {account.username ? `@${account.username}` : ""}
           </span>
         </p>
-        <p className="text-xs text-ink-faint">{account.phone_masked}</p>
+        <p className="text-xs text-ink-faint">
+          {account.phone_masked} · {t("common:count.channels", { count: account.channel_count })}
+        </p>
+        {account.flood_wait_until && new Date(account.flood_wait_until) > new Date() && (
+          <p className="mt-0.5 text-xs text-warning">
+            {t("accounts.floodUntil", { time: dateTime(account.flood_wait_until) })}
+          </p>
+        )}
         {account.last_error && (
-          <p className="mt-0.5 text-xs text-danger">{account.last_error}</p>
+          <p className="mt-0.5 break-words text-xs text-danger">
+            {t("accounts.lastError")}: <span className="font-mono">{account.last_error}</span>
+          </p>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={account.status} />
+        <StatusBadge status={account.status} domain="account" />
         <button
           className="btn-ghost"
-          title="Refresh channels"
+          title={t("accounts.refreshChannels")}
+          aria-label={t("accounts.refreshChannels")}
+          disabled={refresh.isPending}
           onClick={() => refresh.mutate()}
         >
-          <Refresh className="h-4 w-4" />
+          <Refresh className="h-4 w-4" aria-hidden />
         </button>
         <button
           className="btn-secondary"
           onClick={() => setConfirm("disconnect")}
         >
-          Disconnect
+          {t("accounts.disconnect")}
         </button>
         <button className="btn-danger" onClick={() => setConfirm("delete")}>
-          Delete
+          {t("common:action.delete")}
         </button>
       </div>
       <ConfirmDialog
@@ -264,8 +293,8 @@ function AccountRow({
         onOpenChange={(v) => !v && setConfirm(null)}
         title={
           confirm === "delete"
-            ? "Delete this account?"
-            : "Disconnect this account?"
+            ? t("accounts.deleteConfirm")
+            : t("accounts.disconnectConfirm")
         }
         destructive
         onConfirm={() => {
@@ -279,6 +308,7 @@ function AccountRow({
 }
 
 export function AccountsPage({ workspaceId }: { workspaceId: string }) {
+  const { t } = useTranslation("channels");
   const [dialogOpen, setDialogOpen] = useState(
     new URLSearchParams(window.location.search).has("add"),
   );
@@ -289,15 +319,19 @@ export function AccountsPage({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Telegram accounts</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold text-ink">{t("accounts.title")}</h1>
         <button className="btn-primary" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4" /> Add account
+          <Plus className="h-4 w-4" aria-hidden /> {t("accounts.addAccount")}
         </button>
       </div>
 
       <Card>
-        {accounts.data && accounts.data.length > 0 ? (
+        {accounts.isPending ? (
+          <SkeletonRows />
+        ) : accounts.isError ? (
+          <ErrorState error={accounts.error} onRetry={() => void accounts.refetch()} />
+        ) : accounts.data.length > 0 ? (
           <div className="divide-y divide-surface-border">
             {accounts.data.map((a) => (
               <AccountRow key={a.id} workspaceId={workspaceId} account={a} />
@@ -305,14 +339,14 @@ export function AccountsPage({ workspaceId }: { workspaceId: string }) {
           </div>
         ) : (
           <EmptyState
-            title="No Telegram accounts connected"
-            description="Connect a Telegram user account to start importing channels you administer."
+            title={t("accounts.empty.title")}
+            description={t("accounts.empty.description")}
             action={
               <button
                 className="btn-primary"
                 onClick={() => setDialogOpen(true)}
               >
-                Add account
+                {t("accounts.addAccount")}
               </button>
             }
           />

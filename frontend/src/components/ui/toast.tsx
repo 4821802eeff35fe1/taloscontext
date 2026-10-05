@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import * as RadixToast from "@radix-ui/react-toast";
 import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 import { create } from "zustand";
@@ -76,7 +77,7 @@ export function Toaster() {
               )}
             </div>
             <RadixToast.Close
-              aria-label="Dismiss"
+              aria-label={i18n.t("common:action.dismiss")}
               className="rounded p-1 text-ink-faint hover:text-ink"
             >
               <X className="h-3.5 w-3.5" />

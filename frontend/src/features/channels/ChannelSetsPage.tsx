@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { endpoints, type ChannelSet, type ChannelSetDetail } from "@/lib/api";
 import {
   Button,
@@ -17,7 +18,9 @@ import { Dialog, ConfirmDialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AppLink } from "@/components/ui/AppLink";
+import { channelSetModeLabel, statusLabel } from "@/i18n/labels";
 export function SetHealth({ set }: { set: ChannelSet }) {
+  const { t } = useTranslation("channels");
   return (
     <span
       className={
@@ -26,7 +29,7 @@ export function SetHealth({ set }: { set: ChannelSet }) {
           : "text-warning"
       }
     >
-      {set.healthy_count} / {set.member_count} ready
+      {t("sets.ready", { healthy: set.healthy_count, count: set.member_count })}
     </span>
   );
 }
@@ -41,6 +44,7 @@ export function ChannelSetsPage({ workspaceId: ws }: { workspaceId: string }) {
       new URLSearchParams(window.location.search).get("set"),
     ),
     [remove, setRemove] = useState<string | null>(null);
+  const { t } = useTranslation("channels");
   const query = useQuery({
       queryKey: ["channel-sets", ws],
       queryFn: () => endpoints.channelSets(ws),
@@ -54,11 +58,11 @@ export function ChannelSetsPage({ workspaceId: ws }: { workspaceId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Channel sets"
-        description="Generate once and distribute to the whole set."
+        title={t("sets.title")}
+        description={t("sets.description")}
         actions={
           <Button variant="primary" onClick={() => setEditing(null)}>
-            New channel set
+            {t("sets.new")}
           </Button>
         }
       />
@@ -67,18 +71,18 @@ export function ChannelSetsPage({ workspaceId: ws }: { workspaceId: string }) {
       ) : query.isError ? (
         <ErrorState error={query.error} />
       ) : !query.data.length ? (
-        <EmptyState title="No channel sets yet" />
+        <EmptyState title={t("sets.empty")} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {query.data.map((s) => (
             <Card className="p-4 space-y-3" key={s.id}>
-              <h2>{s.name}</h2>
+              <h2 className="break-words">{s.name}</h2>
               <p className="text-xs text-ink-muted">{s.description}</p>
-              <div className="flex justify-between text-xs">
+              <div className="flex flex-wrap justify-between gap-2 text-xs">
                 <SetHealth set={s} />
-                <span>{s.mode}</span>
+                <span>{channelSetModeLabel(s.mode)}</span>
               </div>
-              <Button onClick={() => setSelected(s.id)}>View details</Button>
+              <Button onClick={() => setSelected(s.id)}>{t("sets.viewDetails")}</Button>
             </Card>
           ))}
         </div>
@@ -86,7 +90,7 @@ export function ChannelSetsPage({ workspaceId: ws }: { workspaceId: string }) {
       <Dialog
         open={!!selected}
         onOpenChange={(o) => !o && setSelected(null)}
-        title={detail.data?.name || "Channel set"}
+        title={detail.data?.name || t("sets.fallbackTitle")}
         size="lg"
       >
         {detail.isPending ? (
@@ -98,36 +102,36 @@ export function ChannelSetsPage({ workspaceId: ws }: { workspaceId: string }) {
             <div className="space-y-4">
               <SetHealth set={detail.data} />
               <p>
-                {detail.data.subscribers} subscribers ·{" "}
-                {detail.data.totals.views} views ·{" "}
-                {detail.data.totals.publications} publications
+                {t("common:count.subscribers", { count: detail.data.subscribers })} ·{" "}
+                {t("common:count.views", { count: detail.data.totals.views })} ·{" "}
+                {t("common:count.publications", { count: detail.data.totals.publications })}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   onClick={() => {
                     setEditing(detail.data!);
                     setSelected(null);
                   }}
                 >
-                  Edit set
+                  {t("sets.edit")}
                 </Button>
                 <Button variant="danger" onClick={() => setRemove(selected)}>
-                  Delete
+                  {t("common:action.delete")}
                 </Button>
               </div>
               {detail.data.channels.map((c) => (
                 <p key={c.id}>
-                  {c.title} · {c.account_label} · {c.health}
+                  {c.title} · {c.account_label} · {statusLabel(c.health, "channel")}
                 </p>
               ))}
-              <h3>Recent posts</h3>
+              <h3>{t("sets.recentPosts")}</h3>
               {detail.data.recent_posts.map((p) => (
                 <AppLink
                   className="block border-t py-2"
                   key={p.content_id}
                   to={`/content?post=${p.content_id}`}
                 >
-                  {p.title} <StatusBadge status={p.status} />
+                  {p.title || t("common:untitled")} <StatusBadge status={p.status} domain="content" />
                 </AppLink>
               ))}
             </div>
@@ -144,7 +148,7 @@ export function ChannelSetsPage({ workspaceId: ws }: { workspaceId: string }) {
       <ConfirmDialog
         open={!!remove}
         onOpenChange={(o) => !o && setRemove(null)}
-        title="Delete this channel set?"
+        title={t("sets.deleteConfirm")}
         destructive
         onConfirm={() => {
           action.mutate(async () => {
@@ -166,6 +170,7 @@ function SetEditor({
   set: ChannelSetDetail | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("channels");
   const [name, setName] = useState(set?.name ?? ""),
     [description, setDescription] = useState(set?.description ?? ""),
     [mode, setMode] = useState(set?.mode ?? "EXACT"),
@@ -184,7 +189,7 @@ function SetEditor({
     <Dialog
       open
       onOpenChange={(o) => !o && onClose()}
-      title={set ? "Edit channel set" : "Create channel set"}
+      title={set ? t("sets.editTitle") : t("sets.createTitle")}
     >
       <form
         className="space-y-3"
@@ -193,7 +198,7 @@ function SetEditor({
           action.mutate();
         }}
       >
-        <Field label="Name" htmlFor="set-name">
+        <Field label={t("sets.name")} htmlFor="set-name">
           <Input
             id="set-name"
             required
@@ -202,20 +207,19 @@ function SetEditor({
           />
         </Field>
         <Textarea
-          aria-label="Set description"
-          placeholder="Description"
+          aria-label={t("sets.descriptionLabel")}
+          placeholder={t("sets.descriptionPlaceholder")}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
         <Select
-          ariaLabel="Distribution mode"
+          ariaLabel={t("sets.mode")}
           value={mode}
           onValueChange={setMode}
-          options={[
-            { value: "EXACT", label: "Exact — same text everywhere" },
-            { value: "CTA_PER_CHANNEL", label: "CTA per channel" },
-            { value: "CONTACT_PER_CHANNEL", label: "Contact per channel" },
-          ]}
+          options={["EXACT", "CTA_PER_CHANNEL", "CONTACT_PER_CHANNEL"].map((value) => ({
+            value,
+            label: t(`mode.${value}.option`),
+          }))}
         />
         <div className="max-h-60 overflow-auto space-y-2">
           {channels.data?.map((c) => (
@@ -232,7 +236,7 @@ function SetEditor({
                 }
               />
               {c.title}
-              <span className="text-ink-faint">{c.health}</span>
+              <span className="text-ink-faint">{statusLabel(c.health, "channel")}</span>
             </label>
           ))}
         </div>
@@ -242,7 +246,7 @@ function SetEditor({
           disabled={!selected.length}
           loading={action.isPending}
         >
-          {set ? "Save channel set" : "Create channel set"}
+          {set ? t("sets.save") : t("sets.create")}
         </Button>
       </form>
     </Dialog>

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { endpoints } from "@/lib/api";
+import { useTranslation } from "react-i18next";
+import { endpoints, type Named } from "@/lib/api";
 import {
   Card,
   PageHeader,
@@ -8,7 +9,10 @@ import {
   SkeletonRows,
   EmptyState,
 } from "@/components/ui/primitives";
-import { rub } from "@/lib/format";
+import { AppLink } from "@/components/ui/AppLink";
+import { categoryLabel } from "@/i18n/labels";
+import { number, percent, rub } from "@/lib/format";
+
 export function BudgetBar({
   spent,
   budget,
@@ -18,6 +22,7 @@ export function BudgetBar({
   budget: string;
   warning?: number;
 }) {
+  const { t } = useTranslation("analytics");
   const pct =
     Number(budget) > 0
       ? (Number(spent) / Number(budget)) * 100
@@ -26,15 +31,15 @@ export function BudgetBar({
         : 0;
   return (
     <div className="space-y-2">
-      <div className="flex justify-between text-xs">
+      <div className="flex flex-wrap justify-between gap-2 text-xs">
         <span>
-          {rub(spent)} / {rub(budget)}
+          {t("budget.spentOf", { spent: rub(spent), budget: rub(budget) })}
         </span>
-        <span>{pct.toFixed(0)}%</span>
+        <span>{percent(pct / 100)}</span>
       </div>
       <div
         role="progressbar"
-        aria-label="Budget usage"
+        aria-label={t("budget.usage")}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.min(100, pct)}
@@ -54,11 +59,13 @@ export function BudgetBar({
     </div>
   );
 }
+
 export function CostDashboardPage({
   workspaceId: ws,
 }: {
   workspaceId: string;
 }) {
+  const { t } = useTranslation("analytics");
   const query = useQuery({
     queryKey: ["costs", ws],
     queryFn: () => endpoints.costDashboard(ws),
@@ -69,74 +76,67 @@ export function CostDashboardPage({
       <ErrorState error={query.error} onRetry={() => void query.refetch()} />
     );
   const d = query.data;
+  // Rows keep the API's machine keys; only labels are localized here.
+  const groups: [string, Named[], (row: Named) => string][] = [
+    ["breakdown", d.breakdown, (row) => t(`costs.kind.${row.key}`, { defaultValue: row.label })],
+    ["byChannelSet", d.by_channel_set, (row) => (row.key === "none" ? t("costs.noTarget") : row.label)],
+    ["byCategory", d.by_category, (row) => (row.key === "none" ? t("costs.noCategory") : categoryLabel(row.key))],
+    ["byProvider", d.by_provider, (row) => row.label],
+  ];
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="AI costs"
-        description="Recorded usage and configured rates for every AI attempt."
-      />
+      <PageHeader title={t("costs.title")} description={t("costs.description")} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          ["Today", d.today_rub],
-          ["7 days", d.week_rub],
-          ["Month", d.month_rub],
-          ["Forecast", d.forecast_month_end_rub],
-        ].map(([label, value]) => (
-          <StatTile key={label} label={label} value={rub(value)} />
+          ["today", d.today_rub],
+          ["week", d.week_rub],
+          ["month", d.month_rub],
+          ["forecast", d.forecast_month_end_rub],
+        ].map(([key, value]) => (
+          <StatTile key={key} label={t(`costs.tile.${key}`)} value={rub(value)} />
         ))}
       </div>
-      <Card className="p-4 space-y-3">
-        <h2>Monthly budget</h2>
-        <BudgetBar
-          spent={d.month_rub}
-          budget={d.month_budget_rub}
-          warning={d.warning_pct}
-        />
+      <Card className="space-y-3 p-4">
+        <h2>{t("costs.monthlyBudget")}</h2>
+        <BudgetBar spent={d.month_rub} budget={d.month_budget_rub} warning={d.warning_pct} />
         <p className="text-xs text-ink-muted">
-          {d.input_tokens_month.toLocaleString()} input tokens ·{" "}
-          {d.output_tokens_month.toLocaleString()} output tokens
+          {t("costs.tokens", {
+            input: number(d.input_tokens_month),
+            output: number(d.output_tokens_month),
+          })}
         </p>
       </Card>
       <div className="grid gap-4 md:grid-cols-2">
-        {[
-          ["Spend breakdown", d.breakdown],
-          ["By channel set", d.by_channel_set],
-          ["By category", d.by_category],
-          ["By provider", d.by_provider],
-        ].map(([label, rows]) => (
-          <Card className="p-4" key={String(label)}>
-            <h2 className="font-medium mb-3">{String(label)}</h2>
-            {typeof rows !== "string" &&
-              rows.map((row) => (
-                <div
-                  key={row.key}
-                  className="flex justify-between border-t py-2 text-sm"
-                >
-                  <span>
-                    {row.label} · {row.requests} calls
-                  </span>
-                  <span>{rub(row.cost_rub)}</span>
-                </div>
-              ))}
-            {typeof rows !== "string" && !rows.length && (
-              <EmptyState title="No usage yet" />
-            )}
+        {groups.map(([key, rows, label]) => (
+          <Card className="p-4" key={key}>
+            <h2 className="mb-3 font-medium">{t(`costs.group.${key}`)}</h2>
+            {rows.map((row) => (
+              <div key={row.key} className="flex justify-between gap-3 border-t py-2 text-sm">
+                <span className="min-w-0 truncate">
+                  {label(row)} · {t("common:count.requests", { count: row.requests })}
+                </span>
+                <span className="shrink-0">{rub(row.cost_rub)}</span>
+              </div>
+            ))}
+            {!rows.length && <EmptyState title={t("costs.noUsage")} />}
           </Card>
         ))}
       </div>
       <Card className="p-4">
-        <h2 className="font-medium mb-3">Most expensive content</h2>
+        <h2 className="mb-3 font-medium">{t("costs.topContent")}</h2>
         {d.top_content.map((p) => (
-          <div
-            className="flex justify-between border-t py-2"
+          <AppLink
+            to={`/content?post=${p.content_id}`}
+            className="flex justify-between gap-3 border-t py-2"
             key={p.content_id}
           >
-            <span>
-              {p.title} · {p.requests} calls
+            <span className="min-w-0 truncate">
+              {p.title || t("common:untitled")} · {t("common:count.requests", { count: p.requests })}
             </span>
-            <span>{rub(p.cost_rub)}</span>
-          </div>
+            <span className="shrink-0">{rub(p.cost_rub)}</span>
+          </AppLink>
         ))}
+        {!d.top_content.length && <EmptyState title={t("costs.noUsage")} />}
       </Card>
     </div>
   );

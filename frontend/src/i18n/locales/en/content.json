@@ -1,0 +1,158 @@
+{
+  "list": {
+    "title": {
+      "posts": "Posts",
+      "approval": "Approval queue"
+    },
+    "description": "One post. Every channel. One generation cost.",
+    "createPost": "Create post",
+    "generateWithAi": "Generate with AI",
+    "draftCreated": "Draft created",
+    "search": "Search posts",
+    "searchPlaceholder": "Search posts…",
+    "statusFilter": "Post status",
+    "allStatuses": "All statuses",
+    "empty": {
+      "title": "No posts found",
+      "description": "Create a draft or generate your first post."
+    },
+    "noTarget": "No target",
+    "aiCost": "AI {{cost}}",
+    "select": {
+      "title": "Select a post",
+      "description": "Edit, preview, approve and schedule from here."
+    }
+  },
+  "generate": {
+    "title": "Generate with AI",
+    "description": "One AI call produces the post; it's then distributed to every channel in the chosen set without regenerating.",
+    "instruction": "Instruction",
+    "instructionPlaceholder": "E.g. Write an educational post about improving CTR in media buying",
+    "target": "Target channel set (optional)",
+    "chooseLater": "Choose later",
+    "generating": "Generating…",
+    "submit": "Generate post"
+  },
+  "transform": {
+    "rewrite": "Rewrite",
+    "shorten": "Shorten",
+    "expand": "Expand",
+    "change_tone": "Change tone",
+    "improve": "Improve",
+    "generate_headline": "Generate headline",
+    "regenerate_fragment": "Regenerate fragment",
+    "generate_cta": "Generate CTA",
+    "remove_cliches": "Remove AI clichés"
+  },
+  "revision": {
+    "created": "Created",
+    "manual_edit": "Manual edit",
+    "restore": "Restored",
+    "GENERATE_POST": "Generated"
+  },
+  "operation": {
+    "GENERATE_POST": "Generation",
+    "REWRITE": "Rewrite",
+    "SHORTEN": "Shorten",
+    "EXPAND": "Expand",
+    "CHANGE_TONE": "Change tone",
+    "REGENERATE_TITLE": "Headline",
+    "REGENERATE_FRAGMENT": "Fragment",
+    "GENERATE_IMAGE_PROMPT": "Image prompt",
+    "GENERATE_IMAGE": "Image",
+    "IMPROVE": "Improve",
+    "GENERATE_CTA": "CTA",
+    "REMOVE_CLICHES": "Remove clichés"
+  },
+  "studio": {
+    "body": "Post body",
+    "updated": "Updated",
+    "changesSaved": "Changes saved",
+    "aiQueued": "AI action queued",
+    "aiCost": "AI cost {{cost}}",
+    "unsaved": "Unsaved changes",
+    "saved": "Saved",
+    "history": "Version history",
+    "reviewRequired": "Manual review required.",
+    "similar": "Similar to recent content: {{percent}}%",
+    "title": "Title",
+    "target": "Target channel set",
+    "tone": "Tone profile",
+    "inheritedTone": "Inherited tone",
+    "activeTone": "Active tone:",
+    "defaultTone": "Default",
+    "toneSource": {
+      "explicit": "chosen for this post",
+      "series": "from series",
+      "channel": "from channels",
+      "workspace": "workspace default",
+      "none": "none"
+    },
+    "formatting": "Formatting",
+    "mark": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strike": "Strikethrough",
+      "code": "Code",
+      "bulletList": "Bulleted list",
+      "orderedList": "Numbered list",
+      "blockquote": "Quote",
+      "codeBlock": "Code block"
+    },
+    "characters": "{{count}} / {{limit}} characters",
+    "save": "Save changes",
+    "hint": "Save changes before AI actions, approval or scheduling. Select text in the editor to regenerate a fragment.",
+    "previewSize": "Preview size",
+    "desktop": "Desktop",
+    "mobile": "Mobile",
+    "channelPreview": "Channel preview",
+    "postImage": "Post image",
+    "attachImage": "Attach image",
+    "removeImage": "Remove image",
+    "generateImage": "Generate image",
+    "generateImageHint": "Generate an image from this post",
+    "tokens": "{{input}} input / {{output}} output tokens",
+    "costSummary": "Text {{text}} · Images {{image}} · Total {{total}}",
+    "submit": "Submit for approval",
+    "approve": "Approve",
+    "reject": "Reject",
+    "schedule": "Schedule",
+    "scheduleRule": "Schedule rule",
+    "chooseScheduleRule": "Choose schedule rule",
+    "nextFreeSlot": "Next free slot",
+    "publishNow": "Publish now",
+    "unschedule": "Unschedule",
+    "confirmReject": "Reject this post?",
+    "confirmDelete": "Delete this post?",
+    "discard": {
+      "title": "Discard unsaved changes?",
+      "description": "Your changes have not been saved.",
+      "confirm": "Discard and leave"
+    },
+    "version": "v{{version}}",
+    "autopilot": "Autopilot",
+    "ai": "AI",
+    "manual": "Manual",
+    "hide": "Hide",
+    "chooseImage": "Choose an image",
+    "galleryImage": "Gallery image",
+    "noImages": {
+      "title": "No images",
+      "description": "Upload images in the Media Gallery."
+    }
+  },
+  "distribution": {
+    "title": "Distribution",
+    "published": "{{ok}} / {{total}} published",
+    "confirmPublished": "Confirm published",
+    "confirmNotDelivered": "Confirm not delivered",
+    "retryFailed_one": "Retry {{count}} failed",
+    "retryFailed_other": "Retry {{count}} failed",
+    "neverResent": "Succeeded channels are never re-sent.",
+    "resolve": {
+      "title": "Resolve uncertain delivery?",
+      "description": "Check the actual Telegram channel first. Confirming not delivered allows a later retry; confirming published prevents another send."
+    }
+  }
+}

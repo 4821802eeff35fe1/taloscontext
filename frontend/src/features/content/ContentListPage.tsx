@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { statusLabel } from "@/i18n/labels";
 import { endpoints } from "@/lib/api";
 import {
   Button,
@@ -19,12 +21,13 @@ import { ContentDetailPanel } from "./ContentDetailPanel";
 export function ContentListPage({
   workspaceId,
   statusFilter,
-  title,
+  titleKey,
 }: {
   workspaceId: string;
   statusFilter?: string;
-  title: string;
+  titleKey: "posts" | "approval";
 }) {
+  const { t } = useTranslation("content");
   const [dialogOpen, setDialogOpen] = useState(
       new URLSearchParams(window.location.search).has("generate"),
     ),
@@ -49,12 +52,12 @@ export function ContentListPage({
     workspaceId,
     async () => {
       const item = await endpoints.createContent(workspaceId, {
-        title: "Untitled",
+        title: "",
         telegram_html: "",
       });
       setSelectedId(item.id);
     },
-    "Draft created",
+    t("list.draftCreated"),
   );
   const createdFromCommand = useRef(false);
   useEffect(() => {
@@ -70,30 +73,30 @@ export function ContentListPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        title={title}
-        description="One post. Every channel. One generation cost."
+        title={t(`list.title.${titleKey}`)}
+        description={t("list.description")}
         actions={
           <>
             <Button onClick={() => create.mutate()} loading={create.isPending}>
-              Create post
+              {t("list.createPost")}
             </Button>
             <Button variant="primary" onClick={() => setDialogOpen(true)}>
-              Generate with AI
+              {t("list.generateWithAi")}
             </Button>
           </>
         }
       />
       <div className="flex flex-wrap gap-2">
         <Input
-          aria-label="Search posts"
-          placeholder="Search posts…"
+          aria-label={t("list.search")}
+          placeholder={t("list.searchPlaceholder")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="max-w-xs"
         />
         {!statusFilter && (
           <Select
-            ariaLabel="Post status"
+            ariaLabel={t("list.statusFilter")}
             value={status}
             onValueChange={setStatus}
             className="w-44"
@@ -109,8 +112,7 @@ export function ContentListPage({
               "ARCHIVED",
             ].map((value) => ({
               value,
-              label:
-                value === "all" ? "All statuses" : value.replaceAll("_", " "),
+              label: value === "all" ? t("list.allStatuses") : statusLabel(value, "content"),
             }))}
           />
         )}
@@ -126,8 +128,8 @@ export function ContentListPage({
             />
           ) : !items.length ? (
             <EmptyState
-              title="No posts found"
-              description="Create a draft or generate your first post."
+              title={t("list.empty.title")}
+              description={t("list.empty.description")}
             />
           ) : (
             items.map((item) => (
@@ -138,16 +140,16 @@ export function ContentListPage({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium">
-                    {item.title || item.topic || "Untitled"}
+                    {item.title || item.topic || t("common:untitled")}
                   </span>
-                  <StatusBadge status={item.status} />
+                  <StatusBadge status={item.status} domain="content" />
                 </div>
                 <p className="my-2 line-clamp-2 text-xs text-ink-muted">
                   {item.excerpt}
                 </p>
                 <div className="flex justify-between text-xs text-ink-faint">
-                  <span>{item.channel_set_name || "No target"}</span>
-                  <span>AI {rub(item.ai_cost_rub)}</span>
+                  <span className="truncate">{item.channel_set_name || t("list.noTarget")}</span>
+                  <span className="shrink-0">{t("list.aiCost", { cost: rub(item.ai_cost_rub) })}</span>
                 </div>
               </button>
             ))
@@ -158,7 +160,7 @@ export function ContentListPage({
               onClick={() => void content.fetchNextPage()}
               loading={content.isFetchingNextPage}
             >
-              Load more
+              {t("common:action.loadMore")}
             </Button>
           )}
         </Card>
@@ -171,8 +173,8 @@ export function ContentListPage({
         ) : (
           <Card>
             <EmptyState
-              title="Select a post"
-              description="Edit, preview, approve and schedule from here."
+              title={t("list.select.title")}
+              description={t("list.select.description")}
             />
           </Card>
         )}

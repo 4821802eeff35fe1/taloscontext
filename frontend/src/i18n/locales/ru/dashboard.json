@@ -1,0 +1,39 @@
+{
+  "title": "Обзор",
+  "description": "Сеть каналов в одном окне.",
+  "noPosts": "Постов пока нет",
+  "delivered": "доставлено {{ok}}/{{total}}",
+  "tile": {
+    "channels": "Каналы",
+    "accounts": "Аккаунты",
+    "postsToday": "Постов сегодня",
+    "scheduled": "Запланировано",
+    "pendingApproval": "Ждут подтверждения",
+    "failed7d": "Ошибки (7 дн.)",
+    "aiToday": "AI сегодня",
+    "monthBudget": "Месяц / бюджет",
+    "forecast": "Прогноз на месяц"
+  },
+  "ofBudget": "из {{budget}}",
+  "nextScheduled": "Ближайшие публикации",
+  "recentlyPublished": "Недавно опубликованные",
+  "recentFailures": "Последние ошибки",
+  "noFailures": "Ошибок публикации нет",
+  "systemHealth": "Состояние системы",
+  "online": "Работает",
+  "unavailable": "Недоступно",
+  "service": {
+    "postgres": "PostgreSQL",
+    "redis": "Redis",
+    "s3": "Хранилище медиа (S3)",
+    "worker": "Воркер",
+    "scheduler": "Планировщик"
+  },
+  "aiProviders": "AI: {{text}} · Изображения: {{image}}",
+  "views7d": "Просмотры · последние 7 дней публикаций",
+  "noMetrics": {
+    "title": "Метрик пока нет",
+    "description": "Метрики появятся после публикации и первого обновления."
+  },
+  "topPosts": "Лучшие посты"
+}

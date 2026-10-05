@@ -1,0 +1,55 @@
+{
+  "budget": {
+    "spentOf": "{{spent}} of {{budget}}",
+    "usage": "Budget usage"
+  },
+  "costs": {
+    "title": "AI costs",
+    "description": "Spending on text and image generation. Amounts are shown in rubles.",
+    "tile": {
+      "today": "Today",
+      "week": "7 days",
+      "month": "Month",
+      "forecast": "Month-end forecast"
+    },
+    "monthlyBudget": "Monthly budget",
+    "tokens": "Input tokens this month: {{input}} · output: {{output}}",
+    "group": {
+      "breakdown": "Spend breakdown",
+      "byChannelSet": "By channel set",
+      "byCategory": "By category",
+      "byProvider": "By provider"
+    },
+    "kind": {
+      "generation": "Generation",
+      "transforms": "Edits & transforms",
+      "images": "Images",
+      "rejected": "Rejected / discarded posts",
+      "failed": "Failed & retried AI calls"
+    },
+    "noTarget": "No channel set",
+    "noCategory": "No category",
+    "noUsage": "No usage yet",
+    "topContent": "Most expensive content"
+  },
+  "performance": {
+    "title": "Performance",
+    "description": "Views, forwards and reactions of published posts by channel.",
+    "period": "Period",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "empty": {
+      "title": "No metrics yet",
+      "description": "Metrics appear after posts are published and metrics are refreshed."
+    },
+    "col": {
+      "channel": "Channel",
+      "posts": "Posts",
+      "views": "Views",
+      "forwards": "Forwards",
+      "reactions": "Reactions",
+      "avgViews": "Avg. views"
+    },
+    "total": "Total"
+  }
+}

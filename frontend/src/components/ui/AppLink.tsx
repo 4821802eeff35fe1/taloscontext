@@ -1,3 +1,4 @@
+import type { AnchorHTMLAttributes } from "react";
 import { Link, type LinkProps } from "@tanstack/react-router";
 
 /** Thin wrapper around TanStack Router's Link with a loosened `to` type.
@@ -6,7 +7,8 @@ import { Link, type LinkProps } from "@tanstack/react-router";
  * other files — this wrapper avoids fighting that on every call site.
  */
 export function AppLink(
-  props: Omit<LinkProps, "to"> & { to: string; className?: string },
+  props: Omit<LinkProps, "to"> &
+    Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "children"> & { to: string; className?: string },
 ) {
   return <Link {...(props as LinkProps)} />;
 }

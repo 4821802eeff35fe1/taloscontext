@@ -1,3 +1,7 @@
+import i18n from "@/i18n";
+import { errorLabel, knownError, statusLabel } from "@/i18n/labels";
+import { rub } from "@/lib/format";
+
 export const API_BASE: string =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -5,17 +9,61 @@ export class ApiError extends Error {
   status: number;
   retryAfter: number | null;
   kind: string | null;
+  /** Stable machine-readable code from the API (e.g. BUDGET_EXCEEDED). */
+  code: string | null;
+  details: Record<string, unknown>;
+  /** The server's English message, kept for logs/fallback. */
+  serverMessage: string;
   constructor(
     status: number,
     message: string,
     retryAfter: number | null = null,
     kind: string | null = null,
+    code: string | null = null,
+    details: Record<string, unknown> = {},
   ) {
-    super(message);
+    super(localizeApiError(code, details, message, retryAfter));
     this.status = status;
     this.retryAfter = retryAfter;
     this.kind = kind;
+    this.code = code;
+    this.details = details;
+    this.serverMessage = message;
   }
+}
+
+/**
+ * Localized text for an API error. Known codes are translated with their
+ * parameters; unknown codes fall back to the server's message (which may
+ * be English) so nothing useful is lost.
+ */
+export function localizeApiError(
+  code: string | null,
+  details: Record<string, unknown>,
+  fallback: string,
+  retryAfter: number | null = null,
+): string {
+  if (code && code !== "VALIDATION_ERROR" && knownError(code)) {
+    const params: Record<string, unknown> = { ...details };
+    if (details.status) params.status = statusLabel(String(details.status), "content");
+    if (details.limit !== undefined) params.limit_fmt = rub(String(details.limit));
+    if (details.spent !== undefined) params.spent_fmt = rub(String(details.spent));
+    if (details.kind) params.period = i18n.t(`common:period.${details.kind}`, { defaultValue: String(details.kind) });
+    if (details.entity) params.entity = i18n.t(`common:entity.${String(details.entity).toLowerCase().replaceAll(" ", "_")}`, { defaultValue: String(details.entity) });
+    const wait = (details.retry_after as number | undefined) ?? retryAfter ?? undefined;
+    if (wait !== undefined) params.seconds = wait;
+    return errorLabel(code, params);
+  }
+  if (code === "VALIDATION_ERROR") return i18n.t("errors:VALIDATION_ERROR_WITH", { message: fallback });
+  return fallback;
+}
+
+/** Message to show for any thrown value. */
+export function errorText(error: unknown): string {
+  if (error instanceof ApiError) {
+    return localizeApiError(error.code, error.details, error.serverMessage, error.retryAfter);
+  }
+  return i18n.t("errors:UNKNOWN");
 }
 
 function describe(detail: unknown, fallback: string): string {
@@ -52,15 +100,22 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(
       0,
       "Can't reach the ChannelOS API. Check your connection or that the backend is running.",
+      null,
+      null,
+      "NETWORK_UNREACHABLE",
     );
   }
   if (!response.ok) {
     let message = response.statusText || `Request failed (${response.status})`;
     let kind: string | null = null;
+    let code: string | null = null;
+    let details: Record<string, unknown> = {};
     try {
       const data = await response.json();
       message = describe(data.detail, message);
       kind = data.kind ?? null;
+      code = typeof data.code === "string" ? data.code : null;
+      details = data.details && typeof data.details === "object" ? data.details : {};
     } catch {
       // non-JSON error body
     }
@@ -70,6 +125,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       message,
       retry ? Number(retry) : null,
       kind,
+      code,
+      details,
     );
   }
   if (response.status === 204) return undefined as T;
@@ -112,7 +169,7 @@ export function qs(
 
 // ---------------------------------------------------------------- types
 
-export type User = { id: string; email: string; full_name: string };
+export type User = { id: string; email: string; full_name: string; language: "ru" | "en" | null };
 export type Role = "OWNER" | "ADMIN" | "EDITOR" | "APPROVER" | "VIEWER";
 export type Workspace = { id: string; name: string; slug: string; role: Role };
 export type Session = {
@@ -149,6 +206,8 @@ export type AuthFlow = {
   phone_masked: string;
   expires_at: string;
   error: string | null;
+  error_code: string | null;
+  wait_seconds: number | null;
   account_id: string | null;
   attempts_left: number;
   refresh_job_id: string | null;
@@ -589,6 +648,7 @@ export type SearchResult = {
   id: string;
   title: string;
   subtitle: string;
+  status?: string | null;
 };
 
 export type Named = {
@@ -653,6 +713,7 @@ export type Dashboard = {
     title: string;
     channel_title: string;
     error: string | null;
+    error_code?: string | null;
     at: string;
   }[];
   telegram_accounts: {
@@ -744,6 +805,8 @@ const W = (ws: string) => `/api/v1/workspaces/${ws}`;
 
 export const endpoints = {
   me: () => api.get<User>("/api/v1/auth/me"),
+  updateMe: (body: { language?: "ru" | "en" | null; full_name?: string }) =>
+    api.patch<User>("/api/v1/auth/me", body),
   login: (email: string, password: string) =>
     api.post<User>("/api/v1/auth/login", { email, password }),
   register: (body: {
@@ -751,6 +814,7 @@ export const endpoints = {
     password: string;
     full_name: string;
     workspace_name: string;
+    language?: "ru" | "en" | null;
   }) => api.post<User>("/api/v1/auth/register", body),
   logout: () => api.post<void>("/api/v1/auth/logout"),
   sessions: () => api.get<Session[]>("/api/v1/auth/sessions"),

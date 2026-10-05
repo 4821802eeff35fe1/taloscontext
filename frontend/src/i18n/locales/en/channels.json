@@ -1,0 +1,95 @@
+{
+  "channels": {
+    "title": "Channels",
+    "empty": {
+      "title": "No channels imported",
+      "description": "Connect an account and refresh its channels."
+    },
+    "private": "Private",
+    "subscribersUnknown": "Subscribers unknown",
+    "last": "Last: {{time}}",
+    "next": "Next: {{time}}",
+    "posts30d_one": "{{count, number}} post in 30 days",
+    "posts30d_other": "{{count, number}} posts in 30 days",
+    "autopilot": "Autopilot",
+    "autopilotFor": "Autopilot for {{title}}",
+    "settings": "Settings",
+    "editor": {
+      "title": "Channel settings: {{title}}",
+      "tone": "Channel tone",
+      "timezone": "Channel timezone",
+      "workspaceDefault": "Workspace default",
+      "save": "Save channel"
+    }
+  },
+  "mode": {
+    "EXACT": {
+      "label": "Exact",
+      "option": "Exact — same text everywhere"
+    },
+    "CTA_PER_CHANNEL": {
+      "label": "CTA per channel",
+      "option": "CTA per channel"
+    },
+    "CONTACT_PER_CHANNEL": {
+      "label": "Contact per channel",
+      "option": "Contact per channel"
+    },
+    "ADAPTED": {
+      "label": "Adapted",
+      "option": "Adapted per channel"
+    }
+  },
+  "sets": {
+    "title": "Channel sets",
+    "description": "Generate once and distribute to the whole set.",
+    "new": "New channel set",
+    "empty": "No channel sets yet",
+    "viewDetails": "View details",
+    "fallbackTitle": "Channel set",
+    "ready_one": "{{healthy}} / {{count}} ready",
+    "ready_other": "{{healthy}} / {{count}} ready",
+    "edit": "Edit set",
+    "recentPosts": "Recent posts",
+    "deleteConfirm": "Delete this channel set?",
+    "editTitle": "Edit channel set",
+    "createTitle": "Create channel set",
+    "name": "Name",
+    "descriptionLabel": "Set description",
+    "descriptionPlaceholder": "Description",
+    "mode": "Distribution mode",
+    "save": "Save channel set",
+    "create": "Create channel set"
+  },
+  "accounts": {
+    "title": "Telegram accounts",
+    "addAccount": "Add account",
+    "empty": {
+      "title": "No Telegram accounts connected",
+      "description": "Connect a Telegram user account to start importing channels you administer."
+    },
+    "importQueued": "Channel import queued",
+    "floodUntil": "Telegram limit until {{time}}",
+    "lastError": "Last error",
+    "refreshChannels": "Refresh channels",
+    "disconnect": "Disconnect",
+    "deleteConfirm": "Delete this account?",
+    "disconnectConfirm": "Disconnect this account?",
+    "flow": {
+      "expired": "The login attempt expired. Start again.",
+      "failed": "Login did not complete ({{state}}).",
+      "codeRefused": "Telegram refused to send a code."
+    },
+    "add": {
+      "title": "Add Telegram account",
+      "phoneHint": "Enter the phone number of the Telegram account you want to connect.",
+      "codeHint": "Enter the verification code sent to that account.",
+      "passwordHint": "This account has two-step verification enabled. Enter the password.",
+      "phone": "Phone number",
+      "sendCode": "Send code",
+      "code": "Verification code",
+      "verify": "Verify",
+      "password": "Two-step verification password"
+    }
+  }
+}

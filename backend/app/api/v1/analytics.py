@@ -162,7 +162,7 @@ async def cost_dashboard(workspace_id: uuid.UUID, member: WorkspaceMember = Depe
         forecast_month_end_rub=await service.forecast_month_end(workspace_id),
         input_tokens_month=int(tokens[0]), output_tokens_month=int(tokens[1]),
         breakdown=breakdown, by_channel_set=by_set, by_category=by_category, by_provider=by_provider, daily=daily,
-        top_content=[TopContent(content_id=i, title=t or tp or "Untitled", status=s.value, cost_rub=_d(c), requests=n)
+        top_content=[TopContent(content_id=i, title=t or tp or "", status=s.value, cost_rub=_d(c), requests=n)
                      for i, t, tp, s, c, n in top],
     )
 
@@ -185,6 +185,7 @@ class FailedPublication(BaseModel):
     channel_title: str
     error: str | None
     at: datetime
+    error_code: str | None = None
 
 
 class DayViews(BaseModel):
@@ -220,7 +221,7 @@ async def _briefs(db: AsyncSession, items: list[ContentItem], at_attr: str) -> l
     names = dict((await db.execute(select(ChannelSet.id, ChannelSet.name)
                                    .where(ChannelSet.id.in_({i.channel_set_id for i in items if i.channel_set_id})))).all()) \
         if items else {}
-    return [PostBrief(content_id=i.id, title=i.title or i.topic or "Untitled", status=i.status.value,
+    return [PostBrief(content_id=i.id, title=i.title or i.topic or "", status=i.status.value,
                       at=getattr(i, at_attr), channel_set_name=names.get(i.channel_set_id), targets=stats[i.id]["targets"],
                       published=stats[i.id]["published"], failed=stats[i.id]["failed"], views=stats[i.id]["views"])
             for i in items]
@@ -300,8 +301,8 @@ async def dashboard(workspace_id: uuid.UUID, member: WorkspaceMember = Depends(g
         failed_publications_7d=failed_pubs or 0, failed_jobs_7d=failed_jobs or 0,
         next_scheduled=await _briefs(db, list(next_items), "scheduled_at"),
         recent_published=recent_briefs,
-        recent_failed=[FailedPublication(content_id=c.id, title=c.title or "Untitled", channel_title=ch.title,
-                                         error=p.error_message, at=p.updated_at) for p, c, ch in failed_rows],
+        recent_failed=[FailedPublication(content_id=c.id, title=c.title or "", channel_title=ch.title,
+                                         error=p.error_message, error_code=p.error_code, at=p.updated_at) for p, c, ch in failed_rows],
         telegram_accounts=[{"id": str(a.id), "phone": a.phone_masked, "status": a.status.value,
                             "flood_wait_until": a.flood_wait_until.isoformat() if a.flood_wait_until else None,
                             "last_heartbeat_at": a.last_heartbeat_at.isoformat() if a.last_heartbeat_at else None}

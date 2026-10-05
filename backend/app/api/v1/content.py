@@ -469,7 +469,7 @@ async def calendar(
         if at is None:
             continue
         entries.append(CalendarEntry(
-            id=i.id, title=i.title or i.topic or "Untitled", status=i.status.value, category=i.category, at=at,
+            id=i.id, title=i.title or i.topic or "", status=i.status.value, category=i.category, at=at,
             kind="published" if published else "scheduled", channel_set_id=i.channel_set_id,
             channel_set_name=names.get(i.channel_set_id), media_asset_id=i.media_asset_id,
             targets=stats[i.id]["targets"], published_count=stats[i.id]["published"], failed_count=stats[i.id]["failed"],

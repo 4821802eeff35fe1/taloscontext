@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useBlocker } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { aiOperationLabel } from "@/i18n/labels";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { endpoints, mediaUrl, type Content } from "@/lib/api";
@@ -25,18 +27,28 @@ import {
   plainText,
   lengthLimit,
 } from "@/lib/telegramHtml";
-import { rub, dateTime } from "@/lib/format";
+import { rub, dateTime, number } from "@/lib/format";
 
+/** Revision actions are transform ops, AI operation enums or manual kinds. */
+function revisionActionLabel(action: string, t: (k: string) => string): string {
+  for (const key of [`revision.${action}`, `transform.${action}`]) {
+    const translated = t(key);
+    if (translated !== key) return translated;
+  }
+  return aiOperationLabel(action);
+}
+
+// Labels: content.json -> transform.<op>
 export const TRANSFORM_ACTIONS = [
-  ["rewrite", "Rewrite"],
-  ["shorten", "Shorten"],
-  ["expand", "Expand"],
-  ["change_tone", "Change tone"],
-  ["improve", "Improve"],
-  ["generate_headline", "Generate headline"],
-  ["regenerate_fragment", "Regenerate fragment"],
-  ["generate_cta", "Generate CTA"],
-  ["remove_cliches", "Remove AI clichés"],
+  "rewrite",
+  "shorten",
+  "expand",
+  "change_tone",
+  "improve",
+  "generate_headline",
+  "regenerate_fragment",
+  "generate_cta",
+  "remove_cliches",
 ] as const;
 
 export function ContentDetailPanel({
@@ -67,6 +79,7 @@ function Studio({
   workspaceId: string;
   item: Content;
 }) {
+  const { t } = useTranslation("content");
   const [title, setTitle] = useState(item.title),
     [html, setHtml] = useState(item.telegram_html);
   const [target, setTarget] = useState(item.channel_set_id ?? "none"),
@@ -109,7 +122,7 @@ function Studio({
     editorProps: {
       attributes: {
         class: "min-h-[220px] p-4 outline-none tg-content",
-        "aria-label": "Post body",
+        "aria-label": t("studio.body"),
       },
     },
     onUpdate: ({ editor }) => setHtml(editorToTelegram(editor.getHTML())),
@@ -180,7 +193,7 @@ function Studio({
   const action = useOperation(
     ws,
     async (fn: () => Promise<unknown>) => fn(),
-    "Updated",
+    t("studio.updated"),
   );
   const save = useOperation(
     ws,
@@ -196,7 +209,7 @@ function Studio({
       setTitle(updated.title);
       setHtml(updated.telegram_html);
     },
-    "Changes saved",
+    t("studio.changesSaved"),
   );
   const transform = useOperation(
     ws,
@@ -215,7 +228,7 @@ function Studio({
         base_revision_id: item.latest_revision_id,
       });
     },
-    "AI action queued",
+    t("studio.aiQueued"),
   );
   const safe = sanitizeTelegramHtml(html),
     count = plainText(safe).length,
@@ -224,26 +237,26 @@ function Studio({
   return (
     <div className="space-y-4 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <StatusBadge status={item.status} />
+        <StatusBadge status={item.status} domain="content" />
         <span className="text-xs text-ink-muted">
-          AI cost {rub(item.ai_cost_rub)} ·{" "}
-          {dirty ? "Unsaved changes" : "Saved"}
+          {t("studio.aiCost", { cost: rub(item.ai_cost_rub) })} ·{" "}
+          {dirty ? t("studio.unsaved") : t("studio.saved")}
         </span>
-        <Button onClick={() => setHistory(true)}>Version history</Button>
+        <Button onClick={() => setHistory(true)}>{t("studio.history")}</Button>
       </div>
       {item.requires_review && (
         <p className="rounded-lg bg-warning/10 p-3 text-warning">
-          Manual review required. {item.risk_flags.join(", ")}
+          {t("studio.reviewRequired")} {item.risk_flags.join(", ")}
         </p>
       )}
       {(item.duplicate_score ?? 0) >= 0.6 && (
         <p className="text-warning">
-          Similar to recent content: {Math.round(item.duplicate_score! * 100)}%
+          {t("studio.similar", { percent: Math.round(item.duplicate_score! * 100) })}
         </p>
       )}
       <div className="grid gap-4 2xl:grid-cols-2">
         <Card className="p-4 space-y-3">
-          <Field label="Title" htmlFor="post-title">
+          <Field label={t("studio.title")} htmlFor="post-title">
             <Input
               id="post-title"
               value={title}
@@ -252,22 +265,22 @@ function Studio({
             />
           </Field>
           <Select
-            ariaLabel="Target channel set"
+            ariaLabel={t("studio.target")}
             value={target}
             onValueChange={setTarget}
             disabled={!editable || item.status === "SCHEDULED"}
             options={[
-              { value: "none", label: "No target" },
+              { value: "none", label: t("list.noTarget") },
               ...(sets.data ?? []).map((s) => ({ value: s.id, label: s.name })),
             ]}
           />
           <Select
-            ariaLabel="Tone profile"
+            ariaLabel={t("studio.tone")}
             value={tone}
             onValueChange={setTone}
             disabled={!editable}
             options={[
-              { value: "none", label: "Inherited tone" },
+              { value: "none", label: t("studio.inheritedTone") },
               ...(tones.data ?? []).map((s) => ({
                 value: s.id,
                 label: s.name,
@@ -275,14 +288,14 @@ function Studio({
             ]}
           />
           <p className="text-xs text-ink-muted">
-            Active tone:{" "}
+            {t("studio.activeTone")}{" "}
             {context.data?.tone
-              ? `${context.data.tone.name} · ${context.data.tone.source}`
-              : "Default"}
+              ? `${context.data.tone.name} · ${t(`studio.toneSource.${context.data.tone.source}`)}`
+              : t("studio.defaultTone")}
             {context.data?.series && ` · ${context.data.series.title}`}
           </p>
           <div className="rounded-lg border">
-            <div className="flex flex-wrap gap-1 border-b p-2">
+            <div className="flex flex-wrap gap-1 border-b p-2" role="toolbar" aria-label={t("studio.formatting")}>
               {(
                 [
                   "bold",
@@ -301,6 +314,7 @@ function Studio({
                   size="sm"
                   disabled={!editable}
                   aria-pressed={editor?.isActive(mark)}
+                  title={t(`studio.mark.${mark}`)}
                   onClick={() => {
                     if (!editor) return;
                     const chain = editor.chain().focus();
@@ -318,7 +332,7 @@ function Studio({
                       .run();
                   }}
                 >
-                  {mark}
+                  {t(`studio.mark.${mark}`)}
                 </Button>
               ))}
             </div>
@@ -329,7 +343,7 @@ function Studio({
               count > limit ? "text-danger text-xs" : "text-ink-faint text-xs"
             }
           >
-            {count} / {limit} characters
+            {t("studio.characters", { count, limit })}
           </p>
           <Button
             variant="primary"
@@ -337,10 +351,10 @@ function Studio({
             disabled={!dirty || !editable || count > limit}
             onClick={() => save.mutate()}
           >
-            Save changes
+            {t("studio.save")}
           </Button>
           <div className="flex flex-wrap gap-2">
-            {TRANSFORM_ACTIONS.map(([op, label]) => (
+            {TRANSFORM_ACTIONS.map((op) => (
               <Button
                 key={op}
                 size="sm"
@@ -353,23 +367,22 @@ function Studio({
                 }
                 onClick={() => transform.mutate(op)}
               >
-                {label}
+                {t(`transform.${op}`)}
               </Button>
             ))}
           </div>
           <p className="text-xs text-ink-faint">
-            Save changes before AI actions, approval or scheduling. Select text
-            in the editor to regenerate a fragment.
+            {t("studio.hint")}
           </p>
         </Card>
         <div className="space-y-3">
           <Segmented
-            ariaLabel="Preview size"
+            ariaLabel={t("studio.previewSize")}
             value={preview}
             onChange={setPreview}
             options={[
-              { value: "desktop", label: "Desktop" },
-              { value: "mobile", label: "Mobile" },
+              { value: "desktop", label: t("studio.desktop") },
+              { value: "mobile", label: t("studio.mobile") },
             ]}
           />
           <div
@@ -378,13 +391,13 @@ function Studio({
             <div className="rounded-lg bg-tg-bubble p-3">
               <p className="mb-3 text-tg-link text-sm font-semibold">
                 {sets.data?.find((s) => s.id === target)?.name ||
-                  "Channel preview"}
+                  t("studio.channelPreview")}
               </p>
               {attached.data && (
                 <img
                   className="mb-3 w-full rounded-lg"
                   src={mediaUrl(attached.data.url)}
-                  alt="Post image"
+                  alt={t("studio.postImage")}
                 />
               )}
               <div
@@ -401,7 +414,7 @@ function Studio({
               disabled={!editable || dirty}
               onClick={() => setMediaOpen(true)}
             >
-              Attach image
+              {t("studio.attachImage")}
             </Button>
             {item.media_asset_id && (
               <Button
@@ -412,12 +425,12 @@ function Studio({
                   )
                 }
               >
-                Remove image
+                {t("studio.removeImage")}
               </Button>
             )}
             <Tooltip
               content={
-                imageInfo.data?.message || "Generate an image from this post"
+                imageInfo.data?.available ? t("studio.generateImageHint") : t("errors:AI_PROVIDER_UNAVAILABLE")
               }
             >
               <span>
@@ -433,7 +446,7 @@ function Studio({
                     )
                   }
                 >
-                  Generate image
+                  {t("studio.generateImage")}
                 </Button>
               </span>
             </Tooltip>
@@ -446,16 +459,18 @@ function Studio({
                   className="flex justify-between gap-3"
                 >
                   <span>
-                    {line.operation.replaceAll("_", " ")} · {line.prompt_tokens}{" "}
-                    input / {line.completion_tokens} output
+                    {aiOperationLabel(line.operation)} ·{" "}
+                    {t("studio.tokens", { input: number(line.prompt_tokens), output: number(line.completion_tokens) })}
                   </span>
                   <span>{rub(line.cost_rub)}</span>
                 </div>
               ))}
               <p>
-                Text {rub(costs.data.text_cost_rub)} · Image{" "}
-                {rub(costs.data.image_cost_rub)} · Total{" "}
-                {rub(costs.data.total_rub)}
+                {t("studio.costSummary", {
+                  text: rub(costs.data.text_cost_rub),
+                  image: rub(costs.data.image_cost_rub),
+                  total: rub(costs.data.total_rub),
+                })}
               </p>
             </Card>
           )}
@@ -469,7 +484,7 @@ function Studio({
               action.mutate(() => endpoints.submitContent(ws, item.id))
             }
           >
-            Submit for approval
+            {t("studio.submit")}
           </Button>
         )}
         {item.status === "PENDING_APPROVAL" && (
@@ -481,14 +496,14 @@ function Studio({
                 action.mutate(() => endpoints.approveContent(ws, item.id))
               }
             >
-              Approve
+              {t("studio.approve")}
             </Button>
             <Button
               variant="danger"
               disabled={disabled}
               onClick={() => setConfirm("reject")}
             >
-              Reject
+              {t("studio.reject")}
             </Button>
           </>
         )}
@@ -509,15 +524,15 @@ function Studio({
                 )
               }
             >
-              Schedule
+              {t("studio.schedule")}
             </Button>
             <div className="w-52">
               <Select
-                ariaLabel="Schedule rule"
+                ariaLabel={t("studio.scheduleRule")}
                 value={scheduleId}
                 onValueChange={setScheduleId}
                 options={[
-                  { value: "none", label: "Choose schedule rule" },
+                  { value: "none", label: t("studio.chooseScheduleRule") },
                   ...(schedules.data ?? [])
                     .filter((s) => s.enabled)
                     .map((s) => ({ value: s.id, label: s.name })),
@@ -534,7 +549,7 @@ function Studio({
                 )
               }
             >
-              Next free slot
+              {t("studio.nextFreeSlot")}
             </Button>
             <Button
               disabled={disabled}
@@ -542,7 +557,7 @@ function Studio({
                 action.mutate(() => endpoints.publishNow(ws, item.id))
               }
             >
-              Publish now
+              {t("studio.publishNow")}
             </Button>
           </>
         )}
@@ -557,7 +572,7 @@ function Studio({
                 action.mutate(() => endpoints.unscheduleContent(ws, item.id))
               }
             >
-              Unschedule
+              {t("studio.unschedule")}
             </Button>
           </>
         )}
@@ -568,7 +583,7 @@ function Studio({
               action.mutate(() => endpoints.archiveContent(ws, item.id))
             }
           >
-            Archive
+            {t("common:action.archive")}
           </Button>
         )}
         {!["PUBLISHING", "PUBLISHED", "PARTIALLY_PUBLISHED"].includes(
@@ -579,7 +594,7 @@ function Studio({
             disabled={disabled}
             onClick={() => setConfirm("delete")}
           >
-            Delete
+            {t("common:action.delete")}
           </Button>
         )}
       </Card>
@@ -587,7 +602,8 @@ function Studio({
       <ConfirmDialog
         open={confirm !== null}
         onOpenChange={(open) => !open && setConfirm(null)}
-        title={confirm === "reject" ? "Reject this post?" : "Delete this post?"}
+        title={confirm === "reject" ? t("studio.confirmReject") : t("studio.confirmDelete")}
+        confirmLabel={confirm === "reject" ? t("studio.reject") : t("common:action.delete")}
         destructive
         onConfirm={() => {
           action.mutate(() =>
@@ -601,16 +617,16 @@ function Studio({
       <ConfirmDialog
         open={blocker.status === "blocked"}
         onOpenChange={(open) => !open && blocker.reset?.()}
-        title="Discard unsaved changes?"
-        description="Your changes have not been saved."
-        confirmLabel="Discard and leave"
+        title={t("studio.discard.title")}
+        description={t("studio.discard.description")}
+        confirmLabel={t("studio.discard.confirm")}
         destructive
         onConfirm={() => blocker.proceed?.()}
       />
       <Dialog
         open={history}
         onOpenChange={setHistory}
-        title="Version history"
+        title={t("studio.history")}
         size="lg"
       >
         {revisions.isPending ? (
@@ -622,9 +638,10 @@ function Studio({
             <div key={r.id} className="border-b py-3 space-y-2">
               <div className="flex flex-wrap justify-between gap-2">
                 <span>
-                  v{r.version} · {r.action} · {r.author_name} ·{" "}
-                  {dateTime(r.created_at)} · {r.is_ai ? "AI" : "Manual"} ·{" "}
-                  {rub(r.cost_rub)}
+                  {t("studio.version", { version: r.version })} · {revisionActionLabel(r.action, t)} ·{" "}
+                  {r.author_name || t("studio.autopilot")} · {dateTime(r.created_at)} ·{" "}
+                  {r.is_ai ? t("studio.ai") : t("studio.manual")}
+                  {r.cost_rub !== null && ` · ${rub(r.cost_rub)}`}
                 </span>
                 <Button
                   size="sm"
@@ -632,7 +649,7 @@ function Studio({
                     setViewRevision(viewRevision === r.id ? null : r.id)
                   }
                 >
-                  View
+                  {viewRevision === r.id ? t("studio.hide") : t("common:action.view")}
                 </Button>
                 <Button
                   size="sm"
@@ -645,7 +662,7 @@ function Studio({
                     )
                   }
                 >
-                  Restore
+                  {t("common:action.restore")}
                 </Button>
               </div>
               {viewRevision === r.id && (
@@ -681,7 +698,7 @@ function Studio({
       <Dialog
         open={mediaOpen}
         onOpenChange={setMediaOpen}
-        title="Choose an image"
+        title={t("studio.chooseImage")}
       >
         <div className="grid grid-cols-3 gap-2">
           {media.data?.items.map((a) => (
@@ -696,7 +713,7 @@ function Studio({
             >
               <img
                 src={mediaUrl(a.url)}
-                alt={a.original_filename || "Gallery image"}
+                alt={a.original_filename || t("studio.galleryImage")}
                 className="aspect-square object-cover rounded-lg"
               />
             </button>
@@ -704,8 +721,8 @@ function Studio({
         </div>
         {!media.data?.items.length && (
           <EmptyState
-            title="No images"
-            description="Upload images in the Media Gallery."
+            title={t("studio.noImages.title")}
+            description={t("studio.noImages.description")}
           />
         )}
       </Dialog>

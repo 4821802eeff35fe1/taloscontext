@@ -8,6 +8,9 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { useLanguageSync } from "@/hooks/useLanguage";
+import { PerformancePage } from "@/features/analytics/PerformancePage";
 import { useSession, useWorkspaces } from "@/hooks/useSession";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { AppShell } from "@/components/layout/AppShell";
@@ -46,27 +49,26 @@ function Protected({
   children: (workspaceId: string) => ReactNode;
 }) {
   const location = useLocation();
+  const { t } = useTranslation();
   const session = useSession();
+  useLanguageSync(session.data);
   const workspaces = useWorkspaces();
   const { workspaceId } = useWorkspaceStore();
 
   if (session.isLoading)
-    return <div className="p-8 text-ink-muted">Loading…</div>;
+    return <div className="p-8 text-ink-muted">{t("state.loading")}</div>;
   if (session.isError) {
     window.location.href = "/login";
     return null;
   }
 
   if (workspaces.isLoading)
-    return <div className="p-8 text-ink-muted">Loading workspace…</div>;
+    return <div className="p-8 text-ink-muted">{t("state.loadingWorkspace")}</div>;
 
   if (!workspaceId) {
     return (
       <AppShell>
-        <EmptyState
-          title="No workspace"
-          description="Create a workspace to get started."
-        />
+        <EmptyState title={t("shell.noWorkspace.title")} description={t("shell.noWorkspace.description")} />
       </AppShell>
     );
   }
@@ -106,14 +108,10 @@ const accountsRoute = page("/accounts", AccountsPage);
 const channelsRoute = page("/channels", ChannelsPage);
 const channelSetsRoute = page("/channel-sets", ChannelSetsPage);
 const contentRoute = page("/content", (props) => (
-  <ContentListPage {...props} title="Posts" />
+  <ContentListPage {...props} titleKey="posts" />
 ));
 const approvalRoute = page("/approval", (props) => (
-  <ContentListPage
-    {...props}
-    title="Approval queue"
-    statusFilter="PENDING_APPROVAL"
-  />
+  <ContentListPage {...props} titleKey="approval" statusFilter="PENDING_APPROVAL" />
 ));
 const mediaRoute = page("/media", MediaGalleryPage);
 const costsRoute = page("/costs", CostDashboardPage);
@@ -142,6 +140,7 @@ const routeTree = rootRoute.addChildren([
   page("/audit", AuditPage),
   page("/notifications", NotificationsPage),
   page("/settings", SettingsPage),
+  page("/performance", PerformancePage),
 ]);
 
 const router = createRouter({ routeTree });

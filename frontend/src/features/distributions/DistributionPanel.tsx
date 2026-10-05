@@ -2,7 +2,9 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/ui/overlays";
 import { useOperation } from "@/hooks/useOperations";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endpoints, ApiError } from "@/lib/api";
+import { useTranslation } from "react-i18next";
+import { endpoints, errorText } from "@/lib/api";
+import { errorLabel, knownError } from "@/i18n/labels";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
@@ -14,6 +16,7 @@ export function DistributionPanel({
   workspaceId: string;
   contentId: string;
 }) {
+  const { t } = useTranslation("content");
   const client = useQueryClient();
   const [resolution, setResolution] = useState<{
     id: string;
@@ -73,12 +76,12 @@ export function DistributionPanel({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-ink">
-                  Distribution
+                  {t("distribution.title")}
                 </span>
-                <StatusBadge status={batch.status} />
+                <StatusBadge status={batch.status} domain="batch" />
               </div>
               <span className="text-sm text-ink-muted">
-                {ok} / {total} published
+                {t("distribution.published", { ok, total })}
               </span>
             </div>
 
@@ -90,18 +93,21 @@ export function DistributionPanel({
                 >
                   <span className="text-ink">{channelName(p.channel_id)}</span>
                   <div className="flex items-center gap-3">
-                    {p.error_message && (
+                    {(p.error_code || p.error_message) && (
                       <span
                         className="max-w-[260px] truncate text-xs text-danger"
-                        title={p.error_message}
+                        title={p.error_message ?? undefined}
                       >
-                        {p.error_message}
+                        {knownError(p.error_code)
+                          ? errorLabel(p.error_code!, { seconds: p.flood_wait_seconds ?? 0, channel: channelName(p.channel_id) })
+                          : p.error_message}
                       </span>
                     )}
                     <StatusBadge
                       status={
                         p.delivery_unknown ? "DELIVERY_UNKNOWN" : p.status
                       }
+                      domain="publication"
                     />
                     {p.delivery_unknown && (
                       <div className="flex flex-wrap gap-2">
@@ -111,7 +117,7 @@ export function DistributionPanel({
                             setResolution({ id: p.id, outcome: "published" })
                           }
                         >
-                          Confirm published
+                          {t("distribution.confirmPublished")}
                         </button>
                         <button
                           className="btn-secondary"
@@ -119,7 +125,7 @@ export function DistributionPanel({
                             setResolution({ id: p.id, outcome: "failed" })
                           }
                         >
-                          Confirm not delivered
+                          {t("distribution.confirmNotDelivered")}
                         </button>
                       </div>
                     )}
@@ -135,16 +141,14 @@ export function DistributionPanel({
                   onClick={() => retry.mutate(batch.id)}
                   disabled={retry.isPending}
                 >
-                  Retry {failed} failed
+                  {t("distribution.retryFailed", { count: failed })}
                 </button>
                 <span className="text-xs text-ink-faint">
-                  Succeeded channels are never re-sent.
+                  {t("distribution.neverResent")}
                 </span>
                 {retry.error && (
                   <span className="text-xs text-danger">
-                    {retry.error instanceof ApiError
-                      ? retry.error.message
-                      : "Retry failed"}
+                    {errorText(retry.error)}
                   </span>
                 )}
               </div>
@@ -155,8 +159,9 @@ export function DistributionPanel({
       <ConfirmDialog
         open={!!resolution}
         onOpenChange={(open) => !open && setResolution(null)}
-        title="Resolve uncertain delivery?"
-        description="Check the actual Telegram channel first. Confirming not delivered allows a later retry; confirming published prevents another send."
+        title={t("distribution.resolve.title")}
+        description={t("distribution.resolve.description")}
+        confirmLabel={resolution?.outcome === "published" ? t("distribution.confirmPublished") : t("distribution.confirmNotDelivered")}
         onConfirm={() => {
           resolve.mutate(resolution!);
           setResolution(null);

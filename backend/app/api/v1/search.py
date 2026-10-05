@@ -21,6 +21,8 @@ class SearchResult(BaseModel):
     id: uuid.UUID
     title: str
     subtitle: str
+    # Machine-readable status/mode so clients can localize them.
+    status: str | None = None
 
 
 @router.get("", response_model=list[SearchResult])
@@ -44,10 +46,10 @@ async def search(workspace_id: uuid.UUID, q: str = Query(min_length=1, max_lengt
         select(ChannelSet).where(ChannelSet.workspace_id == workspace_id, func.lower(ChannelSet.name).like(pattern)).limit(6)
     )).scalars().all()
     return (
-        [SearchResult(kind="post", id=p.id, title=p.title or p.topic or "Untitled",
-                      subtitle=f"{p.status.value.replace('_', ' ').lower()} · {(p.plain_text or '')[:60]}") for p in posts]
+        [SearchResult(kind="post", id=p.id, title=p.title or p.topic or "",
+                      subtitle=(p.plain_text or "")[:60], status=p.status.value) for p in posts]
         + [SearchResult(kind="channel", id=c.id, title=c.title, subtitle=f"@{c.username}" if c.username else "private")
            for c in channels]
-        + [SearchResult(kind="channel_set", id=s.id, title=s.name, subtitle=s.mode.value.replace("_", " ").lower())
+        + [SearchResult(kind="channel_set", id=s.id, title=s.name, subtitle="", status=s.mode.value)
            for s in sets]
     )

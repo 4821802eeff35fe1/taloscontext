@@ -1,0 +1,39 @@
+{
+  "title": "Overview",
+  "description": "Your channel network at a glance.",
+  "noPosts": "No posts yet",
+  "delivered": "{{ok}}/{{total}} delivered",
+  "tile": {
+    "channels": "Channels",
+    "accounts": "Accounts",
+    "postsToday": "Posts today",
+    "scheduled": "Scheduled",
+    "pendingApproval": "Pending approval",
+    "failed7d": "Failed (7d)",
+    "aiToday": "AI today",
+    "monthBudget": "Month / budget",
+    "forecast": "Month forecast"
+  },
+  "ofBudget": "of {{budget}}",
+  "nextScheduled": "Next scheduled",
+  "recentlyPublished": "Recently published",
+  "recentFailures": "Recent failures",
+  "noFailures": "No publication failures",
+  "systemHealth": "System health",
+  "online": "Online",
+  "unavailable": "Unavailable",
+  "service": {
+    "postgres": "PostgreSQL",
+    "redis": "Redis",
+    "s3": "Media storage (S3)",
+    "worker": "Worker",
+    "scheduler": "Scheduler"
+  },
+  "aiProviders": "AI: {{text}} · Images: {{image}}",
+  "views7d": "Views · last 7 publish days",
+  "noMetrics": {
+    "title": "No metrics yet",
+    "description": "Metrics appear after publishing and the first refresh."
+  },
+  "topPosts": "Top posts"
+}

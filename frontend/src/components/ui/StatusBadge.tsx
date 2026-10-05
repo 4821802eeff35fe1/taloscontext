@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { statusLabel as translateStatus, type StatusDomain } from "@/i18n/labels";
 import { cn } from "./primitives";
 
 type Tone = "success" | "warning" | "danger" | "neutral" | "accent" | "info";
@@ -58,31 +60,21 @@ const STATUS_TONE: Record<string, Tone> = {
   AUTHORIZING: "accent",
 };
 
-const LABEL: Record<string, string> = {
-  PENDING_APPROVAL: "Needs approval",
-  PARTIALLY_PUBLISHED: "Partly published",
-  PARTIAL_FAILURE: "Partial failure",
-  NO_POST_PERMISSION: "No post rights",
-  TWO_FA_REQUIRED: "2FA required",
-  AUTH_REQUIRED: "Re-login needed",
-  FLOOD_WAIT: "Flood wait",
-  DELIVERY_UNKNOWN: "Delivery unknown",
-};
-
-export function statusLabel(status: string) {
-  return (
-    LABEL[status] ??
-    status.charAt(0) + status.slice(1).toLowerCase().replaceAll("_", " ")
-  );
+/** @deprecated import statusLabel from "@/i18n/labels" — kept for existing call sites. */
+export function statusLabel(status: string, domain?: StatusDomain) {
+  return translateStatus(status, domain);
 }
 
 export function StatusBadge({
   status,
+  domain,
   className,
 }: {
   status: string;
+  domain?: StatusDomain;
   className?: string;
 }) {
+  useTranslation(); // re-render on language change
   const tone = STATUS_TONE[status] ?? "neutral";
   const live =
     tone === "accent" &&
@@ -101,7 +93,7 @@ export function StatusBadge({
           aria-hidden
         />
       )}
-      {statusLabel(status)}
+      {translateStatus(status, domain)}
     </span>
   );
 }

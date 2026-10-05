@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endpoints, ApiError } from "@/lib/api";
+import { useTranslation } from "react-i18next";
+import { endpoints, errorText } from "@/lib/api";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 
@@ -15,6 +16,7 @@ export function GeneratePostDialog({
   onOpenChange: (v: boolean) => void;
   onCreated: (contentId: string) => void;
 }) {
+  const { t } = useTranslation("content");
   const client = useQueryClient();
   const [instruction, setInstruction] = useState("");
   const [channelSetId, setChannelSetId] = useState<string | undefined>(
@@ -39,16 +41,15 @@ export function GeneratePostDialog({
       setInstruction("");
       onCreated(item.id);
     },
-    onError: (e) =>
-      setError(e instanceof ApiError ? e.message : "Generation failed"),
+    onError: (e) => setError(errorText(e)),
   });
 
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Generate with AI"
-      description="One AI call produces the post; it's then distributed to every channel in the chosen set without regenerating."
+      title={t("generate.title")}
+      description={t("generate.description")}
     >
       <form
         className="space-y-3"
@@ -59,23 +60,23 @@ export function GeneratePostDialog({
       >
         <div>
           <label className="label" htmlFor="generation-instruction">
-            Instruction
+            {t("generate.instruction")}
           </label>
           <textarea
             id="generation-instruction"
             className="input min-h-[90px]"
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            placeholder="E.g. Write an educational post about improving CTR in media buying"
+            placeholder={t("generate.instructionPlaceholder")}
             required
           />
         </div>
         <div>
-          <label className="label">Target channel set (optional)</label>
+          <label className="label">{t("generate.target")}</label>
           <Select
             value={channelSetId}
             onValueChange={setChannelSetId}
-            placeholder="Choose later"
+            placeholder={t("generate.chooseLater")}
             options={(channelSets.data ?? []).map((s) => ({
               value: s.id,
               label: s.name,
@@ -84,7 +85,7 @@ export function GeneratePostDialog({
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}
         <button className="btn-primary w-full" disabled={generate.isPending}>
-          {generate.isPending ? "Generating…" : "Generate post"}
+          {generate.isPending ? t("generate.generating") : t("generate.submit")}
         </button>
       </form>
     </Dialog>
