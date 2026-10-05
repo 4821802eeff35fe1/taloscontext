@@ -142,6 +142,7 @@ function SeriesEditor({
   series: Series | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("automation");
   const [d, setD] = useState<SeriesInput>(series ?? initial);
   const sets = useQuery({
       queryKey: ["channel-sets", ws],
