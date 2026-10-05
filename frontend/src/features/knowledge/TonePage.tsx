@@ -122,6 +122,7 @@ function ToneEditor({
   profile: ToneProfile | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("ai");
   const [draft, setDraft] = useState<ToneInput>(profile ?? initial);
   const action = useOperation(ws, async () => {
     if (profile) await endpoints.updateTone(ws, profile.id, draft);
