@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 
+from PIL import Image
 from telethon import TelegramClient
 from telethon.errors import (
     FloodWaitError,
@@ -143,8 +144,24 @@ class TelethonTelegramProvider(TelegramProvider):
         entity = await self._resolve(client, entity_id, access_hash)
         try:
             if image_bytes:
+                image = io.BytesIO(image_bytes)
+                # Telethon selects photo vs document by the stream's extension,
+                # not its bytes. An unnamed BytesIO is sent as an "unnamed" document.
+                with Image.open(image) as decoded:
+                    if decoded.format in ("JPEG", "PNG"):
+                        image.name = "post.jpg" if decoded.format == "JPEG" else "post.png"
+                    else:
+                        # WebP/GIF uploads are post illustrations too. Telegram
+                        # photos use JPEG/PNG; publish their first frame as JPEG.
+                        rgba = decoded.convert("RGBA")
+                        photo = Image.new("RGB", rgba.size, "white")
+                        photo.paste(rgba, mask=rgba.getchannel("A"))
+                        image = io.BytesIO()
+                        photo.save(image, format="JPEG", quality=95)
+                        image.name = "post.jpg"
+                image.seek(0)
                 message = await client.send_file(
-                    entity, io.BytesIO(image_bytes), caption=html, parse_mode="html"
+                    entity, image, caption=html, parse_mode="html", force_document=False
                 )
             else:
                 message = await client.send_message(entity, html, parse_mode="html")
